@@ -9,7 +9,7 @@ import { auth } from './src/database/firebaseconfig.js'; // <-- ¡IMPORTANTE!
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 
 // Importamos tu NAVEGADOR DE TABS (que ahora se llama Mytabs)
-import Mytabs from './Navegacion.js';
+import Mytabs from './src/Navigation/Navegacion.js';
 
 // Importamos tu HEADER
 import HeaderPersonalizado from './src/components/HeaderPersonalizado';
