@@ -3,18 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-gesture-handler';
-
-// Importa tu configuración de Firebase
-import { auth } from './src/database/firebaseconfig.js'; // <-- ¡IMPORTANTE!
+import { auth } from './src/database/firebaseconfig.js'; 
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
-
-// Importamos tu NAVEGADOR DE TABS (que ahora se llama Mytabs)
 import Mytabs from './src/Navigation/Navegacion.js';
-
-// Importamos tu HEADER
 import HeaderPersonalizado from './src/components/HeaderPersonalizado';
-
-// Importamos TODAS las pantallas del menú (¡fíjate en las rutas!)
 import Rutinas from './src/views/Rutinas.js';
 import Objetivos from './src/views/Objetivos.js';
 import Nutricion from './src/views/Nutricion.js';

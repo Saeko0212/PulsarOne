@@ -13,11 +13,8 @@ import Perfil from "../views/Perfil.js";
 
 const Tab = createBottomTabNavigator();
 
-// Esta es la función que tu App.js importa como 'Navegacion'
 function Mytabs() {
     
-    // ¡NUEVO HOOK!
-    // Obtenemos los 'insets' (márgenes seguros) del dispositivo
     const insets = useSafeAreaInsets();
 
     return (
@@ -25,25 +22,20 @@ function Mytabs() {
             initialRouteName='Inicio'
             screenOptions={{
                 tabBarActiveTintColor: 'green',
-                headerShown: false, // El header lo maneja App.js
+                headerShown: false, 
                 
-                // ¡CAMBIOS AQUÍ!
                 tabBarLabelStyle: {
                     fontSize: 10,
-                    // Añadimos padding aquí abajo para el texto
                     paddingBottom: 3, 
                 },
                 tabBarStyle: {
-                    // La altura ahora será 55 + el espacio de abajo
                     height: 55 + insets.bottom, 
-                    // Añadimos padding abajo igual al 'inset'
                     paddingBottom: insets.bottom, 
-                    // Añadimos un poco de padding arriba para centrar los iconos
                     paddingTop: 5, 
                 }
             }}>
             
-            {/* --- SOLO TUS 4 PESTAÑAS VISIBLES --- */}
+            {}
             <Tab.Screen name="Inicio" component={Inicio} 
                 options={{
                     tabBarLabel:'Inicio',
@@ -80,6 +72,4 @@ function Mytabs() {
         </Tab.Navigator>
     );
 }
-
-// Exportamos el componente Mytabs como default
 export default Mytabs;

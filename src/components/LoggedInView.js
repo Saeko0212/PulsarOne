@@ -67,8 +67,42 @@ const LoggedInView = () => {
   const [medicionToDelete, setMedicionToDelete] = useState(null); // Almacena el ID
   const [editMedicionModalVisible, setEditMedicionModalVisible] = useState(false); // <-- Añade esta línea
   const [medicionToEdit, setMedicionToEdit] = useState(null); // <-- Añade esta línea
+  // Cerca de tus otros 'useState'
+  const [imcData, setImcData] = useState({ imc: null, categoria: 'Calculando...' });
   
   const user = auth.currentUser;
+
+  // ... (después de handleLogout o handleDeleteMedicion) ...
+  const calcularImcAPI = async (pesoKg, alturaM, edad) => {
+    try {
+      // ¡CAMBIA ESTA URL POR LA TUYA DE API GATEWAY!
+      const API_URL = "https://3hj4dtla5i.execute-api.us-east-2.amazonaws.com/calcular-imc"; 
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pesoKg: pesoKg,
+          alturaM: alturaM,
+          edad: edad, 
+          // El PDF también pide genero, actividad y meta, 
+          // puedes añadirlos si los tienes en 'userData'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setImcData({ imc: data.imc, categoria: data.categoria });
+      } else {
+        console.error("Error en la API:", data.message);
+        setImcData({ imc: null, categoria: 'Error' });
+      }
+    } catch (error) {
+      console.error("Error al calcular IMC en API:", error);
+      setImcData({ imc: null, categoria: 'Error' });
+    }
+  };
 
   // Efecto para cargar datos del perfil (igual que antes)
   useEffect(() => {
@@ -108,6 +142,30 @@ const LoggedInView = () => {
 
     return () => unsubscribe();
   }, [user]);
+
+  // ... (después de tus otros useEffect) ...
+  // Efecto para calcular el IMC cuando los datos estén listos
+  useEffect(() => {
+    // Solo se ejecuta si tenemos userData (para la altura) Y al menos una medición (para el peso)
+    if (userData && userData.altura && mediciones.length > 0) {
+
+      // 1. Obtener la altura del perfil y convertirla a metros
+      const alturaEnMetros = userData.altura / 100;
+
+      // 2. Obtener el peso de la medición más reciente
+      const pesoActual = mediciones[0].peso;
+
+      // 3. Obtener la edad (la guardamos en 'PerfilDatos' con el modal de edición)
+      const edadActual = userData.edad; 
+
+      // 4. Llamar a la API
+      calcularImcAPI(pesoActual, alturaEnMetros, edadActual);
+
+    } else if (!loading) {
+      // Si no hay datos, resetea
+      setImcData({ imc: null, categoria: 'Sin datos' });
+    }
+  }, [userData, mediciones, loading]); // Depende de estas variables
 
   const handleLogout = async () => {
     try {
@@ -231,7 +289,14 @@ const LoggedInView = () => {
           </View>
           <View style={[styles.statCard, styles.cardOrange]}>
             <Text style={styles.statCardTitle}>IMC</Text>
-            <Text style={styles.statCardValue}>24.5</Text>
+            <Text style={styles.statCardValue}>
+              {/* Muestra el IMC con 1 decimal, o '--' si no hay */}
+              {imcData.imc ? imcData.imc.toFixed(1) : '--'}
+            </Text>
+            {/* Añadimos un subtítulo para la categoría */}
+            <Text style={styles.statCardSubtitle}>
+              {imcData.categoria}
+            </Text>
           </View>
         </View>
       </View>
@@ -393,6 +458,12 @@ const styles = StyleSheet.create({
   statCardValue: { fontSize: 24, fontWeight: 'bold', color: '#000' },
   cardBlue: { backgroundColor: '#e7f3fe' },
   cardGreen: { backgroundColor: '#e6f7eb' },
+  // --- ¡AÑADE ESTE ESTILO! ---
+  statCardSubtitle: {
+    fontSize: 14,
+    color: '#555',
+    marginTop: 2,
+  },
   cardPurple: { backgroundColor: '#f9f0ff' },
   cardOrange: { backgroundColor: '#fff8e1' },
   
