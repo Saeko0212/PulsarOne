@@ -34,14 +34,13 @@ const FormularioEventos = ({ visible, onClose, fechaSeleccionada }) => {
       setTipo('Entrenamiento');
       setDuracion('60');
 
-    
       const parts = fechaSeleccionada.split('-').map(Number); 
       const selectedDay = new Date(parts[0], parts[1] - 1, parts[2]); 
 
       setFecha(selectedDay); 
       setHora(new Date());   
     }
-  }, [visible, fechaSeleccionada]); 
+  }, [visible, fechaSeleccionada]);
 
   
   const onChangeFecha = (event, selectedDate) => {
@@ -104,7 +103,6 @@ const FormularioEventos = ({ visible, onClose, fechaSeleccionada }) => {
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Nuevo Evento</Text>
 
-          {}
           <Text style={styles.label}>Título</Text>
           <TextInput
             style={styles.input}
@@ -113,7 +111,6 @@ const FormularioEventos = ({ visible, onClose, fechaSeleccionada }) => {
             onChangeText={setTitulo}
           />
 
-          {}
           <Text style={styles.label}>Descripción</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -124,7 +121,6 @@ const FormularioEventos = ({ visible, onClose, fechaSeleccionada }) => {
             onChangeText={setDescripcion}
           />
 
-          {}
           <Text style={styles.label}>Tipo</Text>
           <View style={styles.pickerContainer}>
             <Picker
@@ -132,44 +128,37 @@ const FormularioEventos = ({ visible, onClose, fechaSeleccionada }) => {
               onValueChange={(itemValue) => setTipo(itemValue)}
               style={styles.picker}
             >
-              {}
               <Picker.Item label="Entrenamiento" value="Entrenamiento" />
               <Picker.Item label="Cardio" value="Cardio" />
               <Picker.Item label="Yoga" value="Yoga" />
               <Picker.Item label="Natación" value="Natación" />
               <Picker.Item label="Deporte" value="Deporte" />
               <Picker.Item label="Otro" value="Otro" />
-              {}
             </Picker>
           </View>
 
           <View style={styles.row}>
-            {}
             <View style={styles.column}>
               <Text style={styles.label}>Fecha</Text>
               <TouchableOpacity
                 style={styles.input}
                 onPress={() => setShowDatePicker(true)}
               >
-                {}
                 <Text>{fecha.toLocaleDateString('es-ES')}</Text>
               </TouchableOpacity>
             </View>
 
-            {}
             <View style={styles.column}>
               <Text style={styles.label}>Hora</Text>
               <TouchableOpacity
                 style={styles.input}
                 onPress={() => setShowTimePicker(true)}
               >
-                {}
                 <Text>{hora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {}
           <Text style={styles.label}>Duración (min)</Text>
           <TextInput
             style={styles.input}
@@ -179,7 +168,6 @@ const FormularioEventos = ({ visible, onClose, fechaSeleccionada }) => {
             onChangeText={setDuracion}
           />
 
-          {}
           {showDatePicker && (
             <DateTimePicker
               testID="datePicker"

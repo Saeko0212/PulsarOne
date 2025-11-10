@@ -193,7 +193,6 @@ const FormularioEditarEvento = ({ visible, onClose, evento }) => {
             style={[styles.button, styles.buttonCreate]}
             onPress={handleActualizarEvento}
           >
-            {}
             <Text style={styles.buttonText}>Actualizar</Text>
           </TouchableOpacity>
           <TouchableOpacity
