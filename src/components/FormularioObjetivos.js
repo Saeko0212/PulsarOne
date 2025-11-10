@@ -3,7 +3,9 @@ import {
   Modal, View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform
 } from 'react-native';
 import { auth, db } from '../database/firebaseconfig.js';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { 
+  collection, addDoc, Timestamp, query, orderBy, limit, getDocs 
+} from 'firebase/firestore';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { FontAwesome } from '@expo/vector-icons';
@@ -12,9 +14,11 @@ const FormularioObjetivos = ({ visible, onClose }) => {
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [categoria, setCategoria] = useState('Peso');
+  
+  const [tipoMeta, setTipoMeta] = useState('perder'); 
+
   const [objetivoValor, setObjetivoValor] = useState('0');
   const [unidad, setUnidad] = useState('kg');
-  const [progreso, setProgreso] = useState('0');
   const [fechaLimite, setFechaLimite] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -29,17 +33,38 @@ const FormularioObjetivos = ({ visible, onClose }) => {
   };
 
   const handleCrearObjetivo = async () => {
-    if (!titulo || !objetivoValor) {
-      Alert.alert('Campos requeridos', 'El título y el objetivo son obligatorios.');
+    if (!titulo || !objetivoValor || parseFloat(objetivoValor) <= 0) {
+      Alert.alert('Campos requeridos', 'El título y un objetivo mayor a 0 son obligatorios.');
       return;
     }
 
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert('Error', 'Debes estar logueado para crear un objetivo.');
+      Alert.alert('Error', 'Debes estar logueado.');
       return;
     }
 
+    let pesoInicial = null;
+
+    if (categoria === 'Peso') {
+      try {
+        const medicionesRef = collection(db, 'PerfilDatos', user.uid, 'mediciones');
+        const q = query(medicionesRef, orderBy('fecha', 'desc'), limit(1));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          Alert.alert('Error', 'No se encontró un registro de peso. Por favor, añade una medición de peso antes de crear un objetivo.');
+          return;
+        }
+        
+        pesoInicial = querySnapshot.docs[0].data().peso;
+
+      } catch (error) {
+        console.error("Error buscando peso inicial: ", error);
+        Alert.alert('Error', 'No se pudo obtener tu peso actual.');
+        return;
+      }
+    }
     try {
       const objRef = collection(db, "Objetivos");
 
@@ -47,18 +72,20 @@ const FormularioObjetivos = ({ visible, onClose }) => {
         titulo: titulo,
         descripcion: descripcion,
         categoria: categoria,
-        objetivo: parseFloat(objetivoValor),
+        tipoMeta: categoria === 'Peso' ? tipoMeta : null,
+        objetivoValor: parseFloat(objetivoValor), 
         unidad: unidad,
-        progresoActual: parseFloat(progreso),
+        pesoInicial: categoria === 'Peso' ? pesoInicial : null, 
+        progresoActual: 0, 
         fechaLimite: Timestamp.fromDate(fechaLimite),
         userId: user.uid, 
         creadoEn: Timestamp.now()
       });
 
       Alert.alert('¡Éxito!', 'Nuevo objetivo creado.');
-      onClose(); 
+      onClose();
       setTitulo(''); setDescripcion(''); setCategoria('Peso'); setObjetivoValor('0');
-      setUnidad('kg'); setProgreso('0'); setFechaLimite(new Date());
+      setUnidad('kg'); setTipoMeta('perder'); setFechaLimite(new Date());
 
     } catch (error) {
       console.error("Error al crear objetivo: ", error);
@@ -111,6 +138,19 @@ const FormularioObjetivos = ({ visible, onClose }) => {
             </Picker>
           </View>
 
+          {}
+          {categoria === 'Peso' && (
+            <>
+              <Text style={styles.label}>Tipo de Meta</Text>
+              <View style={styles.pickerContainer}>
+                <Picker selectedValue={tipoMeta} onValueChange={(itemValue) => setTipoMeta(itemValue)} style={styles.picker}>
+                  <Picker.Item label="Perder Peso" value="perder" />
+                  <Picker.Item label="Ganar Peso" value="ganar" />
+                </Picker>
+              </View>
+            </>
+          )}
+
           <View style={styles.row}>
             <View style={styles.column}>
               <Text style={styles.label}>Objetivo</Text>
@@ -121,9 +161,6 @@ const FormularioObjetivos = ({ visible, onClose }) => {
               <TextInput style={styles.input} value={unidad} onChangeText={setUnidad} />
             </View>
           </View>
-
-          <Text style={styles.label}>Progreso Actual</Text>
-          <TextInput style={styles.input} value={progreso} onChangeText={setProgreso} keyboardType="numeric" />
 
           <Text style={styles.label}>Fecha Límite</Text>
           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInput}>
