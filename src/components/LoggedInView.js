@@ -1,4 +1,3 @@
-// components/LoggedInView.js
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -8,35 +7,29 @@ import {
   ActivityIndicator, 
   Image, 
   Alert,
-  ScrollView, // ¡Importante!
+  ScrollView, 
 } from 'react-native';
 import { auth, db } from '../database/firebaseconfig.js';
 import { signOut } from 'firebase/auth';
-// ¡Nuevos imports!
-import { doc, onSnapshot, collection, query, orderBy, deleteDoc } from 'firebase/firestore';
-
-// --- ¡NUEVO! Importa la librería de iconos ---
-// Importa la librería de iconos
+import { doc, onSnapshot, collection, query, orderBy, deleteDoc, limit, where, getDocs } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
 
 import EditarPerfilModal from './EditarPerfilModal';
-import FormularioMedicion from './FormularioMedicion'; // <-- ¡Importa el nuevo modal!
-import EditarMedicionModal from './EditarMedicionModal'; // <-- Añade esta línea
+import FormularioMedicion from './FormularioMedicion'; 
+import EditarMedicionModal from './EditarMedicionModal'; 
 import EliminarMedicionModal from './EliminarMedicionModal';
 
-// --- Componente para un item de la lista (actualizado con iconos) ---
-// Componente para un item de la lista (actualizado con iconos)
 const MedicionItem = ({ item, onEdit, onDelete }) => {
   const { fecha, peso, grasa, masaMuscular } = item;
   return (
     <View style={styles.medicionItemCard}>
       <View style={styles.medicionRow}>
-        <FontAwesome name="calendar-o" size={20} color="#555" />
+        <FontAwesome name="calendar-o" size={18} color="#555" style={styles.icon} />
         <Text style={styles.medicionDate}>
           {fecha.toDate().toLocaleDateString('es-ES')}
         </Text>
         <View style={styles.medicionIcons}>
-          {/* Botón de Editar con la nueva función onEdit */}
+          {}
           <TouchableOpacity onPress={() => onEdit(item)}>
             <FontAwesome name="pencil" size={20} color="#333" />
           </TouchableOpacity>
@@ -56,26 +49,26 @@ const MedicionItem = ({ item, onEdit, onDelete }) => {
   );
 };
 
-// --- Componente Principal ---
 const LoggedInView = () => {
   const [userData, setUserData] = useState(null);
-  const [mediciones, setMediciones] = useState([]); // <-- ¡Nuevo estado!
+  const [mediciones, setMediciones] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  const [imcData, setImcData] = useState({ imc: null, categoria: 'Calculando...' });
+  const [pesoObjetivoCalculado, setPesoObjetivoCalculado] = useState(null);
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [medicionModalVisible, setMedicionModalVisible] = useState(false);
+  const [editMedicionModalVisible, setEditMedicionModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [medicionToDelete, setMedicionToDelete] = useState(null); // Almacena el ID
-  const [editMedicionModalVisible, setEditMedicionModalVisible] = useState(false); // <-- Añade esta línea
-  const [medicionToEdit, setMedicionToEdit] = useState(null); // <-- Añade esta línea
-  // Cerca de tus otros 'useState'
-  const [imcData, setImcData] = useState({ imc: null, categoria: 'Calculando...' });
+  
+  const [medicionToEdit, setMedicionToEdit] = useState(null);
+  const [medicionToDelete, setMedicionToDelete] = useState(null); 
   
   const user = auth.currentUser;
 
-  // ... (después de handleLogout o handleDeleteMedicion) ...
   const calcularImcAPI = async (pesoKg, alturaM, edad) => {
     try {
-      // ¡CAMBIA ESTA URL POR LA TUYA DE API GATEWAY!
       const API_URL = "https://3hj4dtla5i.execute-api.us-east-2.amazonaws.com/calcular-imc"; 
 
       const response = await fetch(API_URL, {
@@ -84,9 +77,7 @@ const LoggedInView = () => {
         body: JSON.stringify({
           pesoKg: pesoKg,
           alturaM: alturaM,
-          edad: edad, 
-          // El PDF también pide genero, actividad y meta, 
-          // puedes añadirlos si los tienes en 'userData'
+          edad: edad,
         }),
       });
 
@@ -99,12 +90,34 @@ const LoggedInView = () => {
         setImcData({ imc: null, categoria: 'Error' });
       }
     } catch (error) {
-      console.error("Error al calcular IMC en API:", error);
+      console.error("Error IMC:", error);
       setImcData({ imc: null, categoria: 'Error' });
     }
   };
 
-  // Efecto para cargar datos del perfil (igual que antes)
+  const calcularPesoObjetivoAPI = async (pesoBase, objetivoData) => {
+    try {
+      const API_URL = "https://3hj4dtla5i.execute-api.us-east-2.amazonaws.com/calcular-peso-objetivo"; 
+      
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pesoBase: pesoBase,
+          objetivoValor: objetivoData.objetivoValor,
+          tipoMeta: objetivoData.tipoMeta 
+        }),
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        setPesoObjetivoCalculado(data.pesoObjetivo);
+      }
+    } catch (error) {
+      console.error("Error Peso Objetivo:", error);
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -112,60 +125,70 @@ const LoggedInView = () => {
     }
     const docRef = doc(db, 'PerfilDatos', user.uid);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setUserData(docSnap.data());
-      } else {
-        setUserData(null);
-      }
+      docSnap.exists() ? setUserData(docSnap.data()) : setUserData(null);
       setLoading(false);
     });
     return () => unsubscribe();
   }, [user]);
 
-  // --- ¡NUEVO EFECTO! ---
-  // Efecto para cargar las mediciones del usuario, ordenadas por fecha
   useEffect(() => {
     if (!user) {
       setMediciones([]);
       return;
     }
     const medicionesRef = collection(db, 'PerfilDatos', user.uid, 'mediciones');
-    const q = query(medicionesRef, orderBy('fecha', 'desc')); // Ordena por fecha más nueva
+    const q = query(medicionesRef, orderBy('fecha', 'desc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const listaMediciones = [];
-      querySnapshot.forEach((doc) => {
-        listaMediciones.push({ id: doc.id, ...doc.data() });
-      });
+      const listaMediciones = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMediciones(listaMediciones);
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  // ... (después de tus otros useEffect) ...
-  // Efecto para calcular el IMC cuando los datos estén listos
   useEffect(() => {
-    // Solo se ejecuta si tenemos userData (para la altura) Y al menos una medición (para el peso)
     if (userData && userData.altura && mediciones.length > 0) {
 
-      // 1. Obtener la altura del perfil y convertirla a metros
       const alturaEnMetros = userData.altura / 100;
 
-      // 2. Obtener el peso de la medición más reciente
       const pesoActual = mediciones[0].peso;
 
-      // 3. Obtener la edad (la guardamos en 'PerfilDatos' con el modal de edición)
       const edadActual = userData.edad; 
 
-      // 4. Llamar a la API
       calcularImcAPI(pesoActual, alturaEnMetros, edadActual);
 
+      const fetchActiveGoal = async () => {
+        try { 
+          const objRef = collection(db, "Objetivos");
+          const q = query(
+            objRef, 
+            where("userId", "==", user.uid), 
+            where("categoria", "==", "Peso"),
+            orderBy("fechaLimite", "asc"),
+            limit(1)
+          );
+          
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            const objetivoData = snapshot.docs[0].data();
+            calcularPesoObjetivoAPI(pesoActual, objetivoData);
+          } else {
+            setPesoObjetivoCalculado(null);
+          }
+        } catch (error) {
+          console.error("Error al buscar objetivo activo:", error);
+          setPesoObjetivoCalculado(null);
+        }
+      };
+      
+      fetchActiveGoal();
+
     } else if (!loading) {
-      // Si no hay datos, resetea
       setImcData({ imc: null, categoria: 'Sin datos' });
     }
-  }, [userData, mediciones, loading]); // Depende de estas variables
+  }, [userData, mediciones, loading]); 
 
   const handleLogout = async () => {
     try {
@@ -175,29 +198,24 @@ const LoggedInView = () => {
     }
   };
 
-  // Esta función SÍ borra el documento. Se la pasaremos al modal.
   const handleConfirmDelete = async () => {
-    if (!medicionToDelete) return; // Seguridad
+    if (!medicionToDelete || !user) return;
 
     try {
       if (!user) return;
       const medicionDocRef = doc(db, 'PerfilDatos', user.uid, 'mediciones', medicionToDelete);
       await deleteDoc(medicionDocRef);
 
-      // Cierra el modal y limpia el estado
       setDeleteModalVisible(false);
       setMedicionToDelete(null);
-      Alert.alert('¡Éxito!', 'Medición eliminada correctamente.');
 
     } catch (error) {
-      console.error('Error al eliminar medición: ', error);
-      Alert.alert('Error', 'No se pudo eliminar la medición.');
+      Alert.alert('Error', 'No se pudo eliminar.');
       setDeleteModalVisible(false);
       setMedicionToDelete(null);
     }
   };
 
-  // --- RENDERIZADO ---
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -206,36 +224,28 @@ const LoggedInView = () => {
     );
   }
 
-  // Vista de "Cargando" o "Error" (si no hay datos de perfil)
   if (!userData) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>No se pudieron cargar los datos del perfil.</Text>
-        <TouchableOpacity
-          style={[styles.button, styles.buttonRed, { marginTop: 20 }]}
-          onPress={handleLogout}
-        >
-          {/* ¡Icono actualizado! */}
-          <FontAwesome name="sign-out" size={16} color="#fff" style={styles.icon} />
+        <Text style={styles.errorText}>Error de carga.</Text>
+        <TouchableOpacity style={[styles.button, styles.buttonRed]} onPress={handleLogout}>
           <Text style={styles.buttonTextWhite}>Cerrar Sesión</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // --- VISTA PRINCIPAL DEL PERFIL (SI HAY DATOS) ---
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       
-      {/* 1. Títulos */}
+      {}
       <Text style={styles.mainTitle}>Mi Perfil</Text>
       <Text style={styles.mainSubtitle}>Gestiona tu información personal</Text> 
 
-      {/* 2. Encabezado del Perfil (Frame) */}
+      {}
       <View style={styles.card}>
         <View style={styles.profileHeader}>
-          <Image
-            source={require('../Image/Logo.png')}
+          <Image source={require('../Image/Logo.png')}
             style={styles.profileImage}
           />
           <View style={styles.profileInfo}>
@@ -251,7 +261,6 @@ const LoggedInView = () => {
             style={[styles.button, styles.buttonWhite]}
             onPress={() => setEditModalVisible(true)}
           >
-            {/* ¡Icono actualizado! */}
             <FontAwesome name="pencil" size={16} color="#333" style={styles.icon} />
             <Text style={styles.buttonTextBlack}>Editar Perfil</Text>
           </TouchableOpacity>
@@ -259,21 +268,20 @@ const LoggedInView = () => {
             style={[styles.button, styles.buttonRed]}
             onPress={handleLogout}
           >
-            {/* ¡Icono actualizado! */}
             <FontAwesome name="sign-out" size={16} color="#fff" style={styles.icon} />
             <Text style={styles.buttonTextWhite}>Cerrar Sesión</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 3. Grid de Estadísticas (Frame) */}
+      {}
       <View style={styles.card}>
-        {/* ... (el grid de estadísticas se mantiene igual) ... */}
+        {}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.cardBlue]}>
           <Text style={styles.statCardTitle}>Peso Actual</Text>
           <Text style={styles.statCardValue}>
-            {/* Comprueba si hay mediciones. Si sí, muestra el peso de la primera [0]. Si no, muestra '--'. */}
+            {}
             {mediciones.length > 0 ? `${mediciones[0].peso} kg` : '-- kg'}
           </Text>
         </View>
@@ -283,17 +291,21 @@ const LoggedInView = () => {
               {userData.altura ? `${userData.altura} cm` : '--'}
             </Text>
           </View>
+          
+          {}
           <View style={[styles.statCard, styles.cardPurple]}>
             <Text style={styles.statCardTitle}>Objetivo</Text>
-            <Text style={styles.statCardValue}>70 kg</Text>
+            <Text style={styles.statCardValue}>
+              {pesoObjetivoCalculado ? `${pesoObjetivoCalculado} kg` : '-- kg'}
+            </Text>
           </View>
+
+          {}
           <View style={[styles.statCard, styles.cardOrange]}>
             <Text style={styles.statCardTitle}>IMC</Text>
             <Text style={styles.statCardValue}>
-              {/* Muestra el IMC con 1 decimal, o '--' si no hay */}
               {imcData.imc ? imcData.imc.toFixed(1) : '--'}
             </Text>
-            {/* Añadimos un subtítulo para la categoría */}
             <Text style={styles.statCardSubtitle}>
               {imcData.categoria}
             </Text>
@@ -301,7 +313,7 @@ const LoggedInView = () => {
         </View>
       </View>
 
-      {/* 4. ¡NUEVA SECCIÓN! Datos Físicos (Frame) */}
+      {}
       <View style={styles.card}>
         <View style={styles.datosFisicosHeader}>
           <Text style={styles.datosFisicosTitle}>Datos Físicos</Text>
@@ -309,26 +321,21 @@ const LoggedInView = () => {
             style={styles.agregarButton}
             onPress={() => setMedicionModalVisible(true)}
           >
-            {/* ¡Icono actualizado! */}
             <FontAwesome name="line-chart" size={16} color="#fff" style={styles.icon} />
             <Text style={styles.agregarButtonText}>Agregar Medición</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Lista de Mediciones */}
+        {}
         {mediciones.length > 0 ? (
           mediciones.map((item) => (
             <MedicionItem 
               key={item.id} 
               item={item} 
-              onEdit={(medicion) => {
-                setMedicionToEdit(medicion); // Guarda la medición a editar
-                setEditMedicionModalVisible(true); // Abre el modal
-              }}
-              // --- ¡CAMBIO AQUÍ! ---
+              onEdit={(medicion) => { setMedicionToEdit(medicion); setEditMedicionModalVisible(true); }}
               onDelete={(id) => {
-                setMedicionToDelete(id); // Guarda el ID de la medición a borrar
-                setDeleteModalVisible(true); // Abre el modal de confirmación
+                setMedicionToDelete(id);
+                setDeleteModalVisible(true);
               }}
             />
           ))
@@ -337,42 +344,24 @@ const LoggedInView = () => {
         )}
       </View>
 
-      {/* --- MODALS --- */}
-      <EditarPerfilModal
-        visible={editModalVisible}
-        onClose={() => setEditModalVisible(false)}
-        currentUserData={userData}
-      />
+      {}
+      <EditarPerfilModal visible={editModalVisible} onClose={() => setEditModalVisible(false)} currentUserData={userData} />
+      <FormularioMedicion visible={medicionModalVisible} onClose={() => setMedicionModalVisible(false)} />
+      <EditarMedicionModal visible={editMedicionModalVisible} onClose={() => { setEditMedicionModalVisible(false); setMedicionToEdit(null); }} medicionToEdit={medicionToEdit} />
 
-      <FormularioMedicion
-        visible={medicionModalVisible}
-        onClose={() => setMedicionModalVisible(false)}
-      />
-
-      <EditarMedicionModal
-        visible={editMedicionModalVisible} // Usa el nuevo estado
-        onClose={() => {
-          setEditMedicionModalVisible(false);
-          setMedicionToEdit(null); // Limpia la medición a editar al cerrar
-        }}
-        medicionToEdit={medicionToEdit} // Pasa la medición seleccionada
-      />
-
-      {/* --- ¡AÑADE ESTE MODAL! --- */}
+      {}
       <EliminarMedicionModal
         visible={deleteModalVisible}
         onClose={() => {
           setDeleteModalVisible(false);
-          setMedicionToDelete(null); // Limpia al cancelar
+          setMedicionToDelete(null); 
         }}
-        onConfirmDelete={handleConfirmDelete} // Pasa la función de borrado
+        onConfirmDelete={handleConfirmDelete}
       />
     </ScrollView>
   );
 };
 
-// --- ESTILOS ---
-// --- ESTILOS ACTUALIZADOS ---
 const styles = StyleSheet.create({
   centered: {
     flex: 1,
@@ -384,7 +373,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: '#dc3545', textAlign: 'center' },
   container: { 
     flex: 1,
-    backgroundColor: '#f0f2f5', // Fondo de la app
+    backgroundColor: '#f0f2f5', 
   },
   scrollContent: {
     padding: 15,
@@ -412,17 +401,39 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 20 
   },
-  profileImage: { width: 60, height: 60, borderRadius: 30, marginRight: 15 },
-  profileInfo: { flex: 1 },
-  profileName: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  profileEmail: { fontSize: 14, color: '#555' },
-  profileMember: { fontSize: 12, color: '#777', marginTop: 4 },
+  profileImage: { 
+    width: 70, 
+    height: 70, 
+    borderRadius: 35, 
+    marginRight: 15, 
+  },
+  profileInfo: { 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  profileName: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#333',
+    textAlign: 'left' 
+  },
+  profileEmail: { 
+    fontSize: 14, 
+    color: '#555',
+    textAlign: 'left', 
+    marginBottom: 2
+  },
+  profileMember: { 
+    fontSize: 12, 
+    color: '#999',
+    textAlign: 'left' 
+  },
   buttonContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-  button: {
+  button: { 
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -431,9 +442,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 5,
   },
-  // --- ¡ESTILO ACTUALIZADO PARA EL ICONO! ---
   icon: {
-    marginRight: 8, // Da espacio entre el icono y el texto
+    marginRight: 8, 
   },
   buttonWhite: {
     backgroundColor: '#ffffff', 
@@ -458,7 +468,6 @@ const styles = StyleSheet.create({
   statCardValue: { fontSize: 24, fontWeight: 'bold', color: '#000' },
   cardBlue: { backgroundColor: '#e7f3fe' },
   cardGreen: { backgroundColor: '#e6f7eb' },
-  // --- ¡AÑADE ESTE ESTILO! ---
   statCardSubtitle: {
     fontSize: 14,
     color: '#555',
@@ -466,8 +475,6 @@ const styles = StyleSheet.create({
   },
   cardPurple: { backgroundColor: '#f9f0ff' },
   cardOrange: { backgroundColor: '#fff8e1' },
-  
-  // --- ¡NUEVOS ESTILOS! ---
   datosFisicosHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -481,8 +488,8 @@ const styles = StyleSheet.create({
   },
   agregarButton: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#28a745', // Verde
+    alignItems: 'center', 
+    backgroundColor: '#28a745', 
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -493,7 +500,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   medicionItemCard: {
-    backgroundColor: '#f8f9fa', // Fondo gris claro para el item
+    backgroundColor: '#f8f9fa',
     borderRadius: 10,
     padding: 15,
     marginBottom: 10,
@@ -507,13 +514,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 10, // Espacio después del icono de calendario
+    color: '#333', 
+    marginLeft: 10,
   },
   medicionIcons: {
     flexDirection: 'row',
-    width: 60, // Ancho fijo para alinear
-    justifyContent: 'space-around', // Espacio entre iconos
+    width: 60,
+    justifyContent: 'space-around',
   },
   medicionData: {
     fontSize: 14,
