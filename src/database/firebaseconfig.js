@@ -1,8 +1,8 @@
 // src/database/firebaseconfig.js
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore'; 
+import { initializeAuth, getReactNativePersistence, browserLocalPersistence, getAuth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -21,16 +21,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- INICIO DE LA CORRECCIÓN ---
-
 // Inicializar Auth con persistencia condicional
 // Esto soluciona el error en la web
-const auth = initializeAuth(app, {
-  persistence: Platform.OS === 'web'
-    ? browserLocalPersistence  // Usar persistencia del navegador para la web
-    : getReactNativePersistence(AsyncStorage) // Usar AsyncStorage para nativo
-});
-
-// --- FIN DE LA CORRECCIÓN ---
+const auth = Platform.OS === 'web'
+  ? getAuth(app) // Para web, getAuth es suficiente
+  : initializeAuth(app, { // Para nativo, se necesita persistencia
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
 
 export { db, auth };
