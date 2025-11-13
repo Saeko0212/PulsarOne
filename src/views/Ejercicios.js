@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, SafeAreaView, 
   TouchableOpacity, ActivityIndicator, RefreshControl 
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { collection, getDocs, query, where, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../database/firebaseconfig.js'; 
@@ -46,7 +46,6 @@ const Ejercicios = () => {
   const cargarDatos = async (currentUserId) => {
     setLoading(true);
     try {
-      // A. Cargar IDs de Favoritos
       const favsRef = collection(db, 'PerfilDatos', currentUserId, 'favoritos');
       const favsSnapshot = await getDocs(favsRef);
       const favsIds = favsSnapshot.docs.map(doc => doc.id);
@@ -181,7 +180,8 @@ const Ejercicios = () => {
           <Text style={styles.headerSubtitle}>Encuentra el ejercicio perfecto</Text>
         </View>
         <TouchableOpacity style={styles.btnAdd} onPress={() => setModalVisible(true)}>
-          <Text style={styles.btnAddText}>+ Agregar</Text>
+          <FontAwesome name="plus" size={16} color="#fff" />
+          <Text style={styles.btnAddText}>Nuevo Ejercicio</Text>
         </TouchableOpacity>
       </View>
 
@@ -250,15 +250,18 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   btnAdd: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#28A745',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 8,
   },
   btnAddText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
+    marginLeft: 8,
   },
   card: {
     backgroundColor: '#FFF',
@@ -294,14 +297,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start', marginRight: 6, marginBottom: 4
   },
   
-  bgYellow: { backgroundColor: '#FFF9C4' }, // Fondo amarillo claro
+  bgYellow: { backgroundColor: '#FFF9C4' },
   textYellow: { color: '#FBC02D', fontWeight: 'bold', fontSize: 12 },
-  bgGreen: { backgroundColor: '#C8E6C9' }, // Fondo verde claro
+  bgGreen: { backgroundColor: '#C8E6C9' }, 
   textGreen: { color: '#28A745', fontWeight: 'bold', fontSize: 12 },
   bgBlue: { backgroundColor: '#E3F2FD' },
-  textBlue: { color: '#2196F3', fontWeight: 'bold', fontSize: 12 }, // Azul Oficial
+  textBlue: { color: '#2196F3', fontWeight: 'bold', fontSize: 12 }, 
   bgGray: { backgroundColor: '#F0F0F0' },
-  textGray: { color: '#757575', fontWeight: 'bold', fontSize: 12 }, // Gris Personal
+  textGray: { color: '#757575', fontWeight: 'bold', fontSize: 12 }, 
   
   detailsContainer: {
     marginBottom: 15,

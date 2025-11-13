@@ -23,24 +23,18 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // El usuario está logueado (real O anónimo)
         setLoading(false);
       } else {
-        // No hay usuario. Lo logueamos anónimamente.
         signInAnonymously(auth)
           .catch(error => {
             console.error("Error al iniciar sesión anónima:", error);
-            // Manejar error crítico si el login anónimo falla
           });
-            // onAuthStateChanged se disparará de nuevo con el usuario anónimo,
-            // y eso pondrá setLoading(false)
       }
     });
 
-    return () => unsubscribe(); // Limpia el listener
+    return () => unsubscribe(); 
   }, []);
 
-  // Muestra un indicador de carga mientras Firebase inicia sesión
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -49,23 +43,20 @@ export default function App() {
     );
   }
 
-  // Una vez cargado, mostramos la app principal con la nueva estructura de navegación
   return (
     <NavigationContainer>
       <Stack.Navigator
-        // --- ¡CAMBIO IMPORTANTE AQUÍ! ---
-        // Ahora pasamos los 'props' (como 'navigation') a tu header
         screenOptions={(props) => ({
           header: () => <HeaderPersonalizado {...props} />
         })
       }
       >
-        {/* La pantalla principal es TU NAVEGADOR DE TABS */}
+        {}
         <Stack.Screen
-          name="AppTabs" // Un nombre para tu grupo de tabs
+          name="AppTabs" 
           component={Mytabs}
         />
-        {/* Y aquí definimos las pantallas del menú */}
+        {}
         <Stack.Screen name="Rutinas" component={Rutinas} />
         <Stack.Screen name="Objetivos" component={Objetivos} />
         <Stack.Screen name="Nutricion" component={Nutricion} />

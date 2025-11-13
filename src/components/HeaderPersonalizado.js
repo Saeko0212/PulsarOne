@@ -9,38 +9,33 @@ import {
   Modal,
   Platform
 } from 'react-native';
-// ¡YA NO NECESITAMOS useNavigation! El 'navigation' vendrá por props.
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 
-// --- Componente de Botón para el Menú ---
-// (Este se queda igual)
-const MenuButton = ({ label, iconName, navigateTo, onPress }) => (
+const MenuButton = ({ label, iconName, iconLib = "FontAwesome", onPress }) => (
   <TouchableOpacity style={styles.menuButton} onPress={onPress}>
-    {/* NOTA: Estoy usando FontAwesome como en tu ejemplo de Tabs.
-      Si quieres tus íconos exactos, reemplaza <FontAwesome> por:
-      <Image source={require('../Image/icon_rutina.png')} style={styles.iconImage} />
-    */}
-    <FontAwesome name={iconName} size={30} color="#444" />
+    {iconLib === 'MaterialCommunityIcons' ? (
+      <MaterialCommunityIcons name={iconName} size={30} color="#444" />
+    ) : iconLib === 'FontAwesome5' ? (
+      <FontAwesome5 name={iconName} size={24} color="#444" />
+    ): (
+      <FontAwesome name={iconName} size={30} color="#444" />
+    )}
     <Text style={styles.menuButtonText}>{label}</Text>
   </TouchableOpacity>
 );
 
-// --- Tu Componente Header (Modificado) ---
-
-// 1. AHORA RECIBE 'navigation' COMO PROP
 const HeaderPersonalizado = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   
-  // 2. Esta función AHORA USA el 'navigation' de los props
   const handleNavigate = (screenName) => {
-    setModalVisible(false); // Cierra el modal
-    navigation.navigate(screenName); // Usa el 'navigation' que vino por props
+    setModalVisible(false); 
+    navigation.navigate(screenName); 
   };
 
   return (
     <SafeAreaView style={styles.safeAreaContainer}>
       
-      {/* --- EL MODAL (EL MENÚ) --- */}
+      {}
       <Modal
         animationType="fade"
         transparent={true}
@@ -49,26 +44,26 @@ const HeaderPersonalizado = ({ navigation }) => {
           setModalVisible(!modalVisible);
         }}
       >
-        {/* Fondo oscuro semitransparente */}
+        {}
         <TouchableOpacity 
           style={styles.modalBackdrop} 
           activeOpacity={1} 
-          onPressOut={() => setModalVisible(false)} // Cierra al tocar fuera
+          onPressOut={() => setModalVisible(false)} 
         >
-          {/* Contenedor del Menú (el cuadro blanco) */}
+          {}
           <View style={styles.modalContent}>
             
-            {/* Grid de 6 botones */}
+            {}
             <View style={styles.modalGrid}>
-              <MenuButton label="Rutinas" iconName="list-alt" onPress={() => handleNavigate('Rutinas')} />
+              <MenuButton label="Rutinas" iconName="book" onPress={() => handleNavigate('Rutinas')} />
               <MenuButton label="Objetivos" iconName="bullseye" onPress={() => handleNavigate('Objetivos')} />
-              <MenuButton label="Nutrición" iconName="leaf" onPress={() => handleNavigate('Nutricion')} />
+              <MenuButton label="Nutrición" iconName="food-apple" iconLib="MaterialCommunityIcons" onPress={() => handleNavigate('Nutricion')} />
               <MenuButton label="Sueño" iconName="moon-o" onPress={() => handleNavigate('Sueño')} />
               <MenuButton label="Timer" iconName="clock-o" onPress={() => handleNavigate('Timer')} />
-              <MenuButton label="Ejercicios" iconName="bicycle" onPress={() => handleNavigate('Ejercicios')} />
+              <MenuButton label="Ejercicios" iconName="dumbbell" iconLib="FontAwesome5" onPress={() => handleNavigate('Ejercicios')} />
             </View>
 
-            {/* Botón de Ranking (separado) */}
+            {}
             <View style={styles.rankingContainer}>
               <MenuButton label="Ranking" iconName="trophy" onPress={() => handleNavigate('Ranking')} />
             </View>
@@ -76,27 +71,24 @@ const HeaderPersonalizado = ({ navigation }) => {
         </TouchableOpacity>
       </Modal>
 
-      {/* --- TU HEADER CON EL NUEVO ORDEN --- */}
+      {}
       <View style={styles.headerContent}>
         
-        {/* 1. LADO IZQUIERDO: Flecha de "Atrás" (condicional) */}
+        {}
         {navigation.canGoBack() ? (
-          // Si SÍ puede ir atrás (ej. en 'Rutinas'), muestra la flecha
           <TouchableOpacity
-            onPress={() => navigation.goBack()} // Función para ir atrás
+            onPress={() => navigation.goBack()} 
             style={styles.headerButton}
           >
             <FontAwesome name="arrow-left" size={24} color="#008000" />
           </TouchableOpacity>
         ) : (
-          // Si NO puede (ej. en 'Inicio'), muestra un espacio invisible
           <View style={styles.headerButton} />
         )}
 
-        {/* 2. CENTRO: Logo y Título (sin cambios) */}
+        {}
         <View style={styles.titleContainer}>
           <Image
-            // Asegúrate que la ruta a tu logo es correcta
             source={require('../Image/Logo.png')} 
             style={styles.logo}
           />
@@ -106,9 +98,9 @@ const HeaderPersonalizado = ({ navigation }) => {
           </Text>
         </View>
         
-        {/* 3. DERECHA: Botón de Menú (Modal) */}
+        {}
         <TouchableOpacity
-          onPress={() => setModalVisible(true)} // Abre el modal
+          onPress={() => setModalVisible(true)} 
           style={styles.headerButton}
         >
           <FontAwesome name="bars" size={24} color="#008000" />
@@ -119,13 +111,9 @@ const HeaderPersonalizado = ({ navigation }) => {
   );
 };
 
-// --- ESTILOS ---
-// (Sin cambios en los estilos)
 const styles = StyleSheet.create({
-  // Estilos Originales del Header
   safeAreaContainer: {
     backgroundColor: '#FFFFFF',
-    // Padding para Android (SafeAreaView no siempre funciona bien)
     paddingTop: Platform.OS === 'android' ? 25 : 0, 
   },
   headerContent: { 
@@ -133,11 +121,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between', 
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 15, // Más espacio en los lados  
-    paddingVertical: 10, // Más compacto
+    paddingHorizontal: 15,  
+    paddingVertical: 10, 
     borderBottomWidth: 2,   
     borderBottomColor: '#E0E0E0', 
-    height: 60, // Altura fija
+    height: 60, 
   },
   headerButton: {
     width: 40, 
@@ -150,13 +138,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 35, // Ligeramente más pequeño
+    width: 35, 
     height: 35,
     resizeMode: 'contain',
     marginRight: 5,       
   },
   titleBase: {
-    fontSize: 26, // Ligeramente más pequeño
+    fontSize: 26, 
   },
   titlePulsar: {
     color: '#008000', 
@@ -167,15 +155,14 @@ const styles = StyleSheet.create({
     fontWeight: '700', 
   },
 
-  // --- Estilos para el Modal ---
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: 'white',
-    marginHorizontal: 10, // Margen a los lados
-    marginTop: Platform.OS === 'android' ? 85 : 100, // Ajusta esto para que quede debajo de tu header
+    marginHorizontal: 10, 
+    marginTop: Platform.OS === 'android' ? 85 : 100, 
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 5,
@@ -186,7 +173,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
-  menuButton: { // Estilo para los botones DENTRO del modal
+  menuButton: { 
     width: '45%', 
     margin: '2.5%',
     alignItems: 'center',
@@ -206,13 +193,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     alignItems: 'center',
   },
-  /* // Estilo si usas imágenes personalizadas
-  iconImage: {
-    width: 30,
-    height: 30,
-    resizeMode: 'contain',
-  }
-  */
+
 });
 
 export default HeaderPersonalizado;

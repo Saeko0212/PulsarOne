@@ -56,7 +56,7 @@ const FormularioNutricion = ({ visible, onClose }) => {
 
       Alert.alert("Éxito", "Comida registrada correctamente");
       resetForm();
-      onClose(); // Cerrar modal
+      onClose(); 
     } catch (e) {
       console.error("Error al guardar: ", e);
       Alert.alert("Error", "No se pudo guardar la comida");
@@ -92,7 +92,7 @@ const FormularioNutricion = ({ visible, onClose }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Nombre */}
+            {}
             <Text style={styles.label}>Nombre</Text>
             <TextInput
             style={[styles.inputSlight, { borderColor: '#10B981' }]}
@@ -103,7 +103,7 @@ const FormularioNutricion = ({ visible, onClose }) => {
             />
 
             <View style={styles.row}>
-              {/* Tipo (Picker) */}
+              {}
             <View style={styles.col}>
                 <Text style={styles.label}>Tipo</Text>
                 <View style={styles.pickerContainer}>

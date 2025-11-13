@@ -1,11 +1,9 @@
-// Navegacion.js
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import 'react-native-gesture-handler';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
 
-// Tus 4 pantallas de Tabs
 import Inicio from "../views/Inicio.js";
 import Progreso from "../views/Progreso.js";
 import Calendario from "../views/Calendario.js";
