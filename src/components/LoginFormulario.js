@@ -1,59 +1,84 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
-// Asegúrate de importar tus configuraciones de Firebase
-import { auth, db } from '../database/firebaseconfig.js'; // <-- ¡IMPORTANTE! Ajusta esta ruta
-import { EmailAuthProvider, linkWithCredential } from "firebase/auth";
-import { setDoc, doc } from "firebase/firestore";
+import {
+  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, ActivityIndicator
+} from 'react-native';
+import { auth, db } from '../database/firebaseconfig.js'; 
+import {
+  EmailAuthProvider,
+  linkWithCredential,
+  createUserWithEmailAndPassword
+} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
-const LoginFormulario = ({ onSuccessfulRegister }) => {
+const LoginFormulario = ({ onSuccessfulRegister }) => { 
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [edad, setEdad] = useState('');
   const [altura, setAltura] = useState('');
+  const [loading, setLoading] = useState(false); 
 
-  // Función para manejar el registro
-  const handleSignUpAndLink = async () => {
+  const handleRegistro = async () => {
     if (!nombre || !email || !password || !edad || !altura) {
       Alert.alert('Campos incompletos', 'Por favor, rellena todos los campos.');
       return;
     }
+    setLoading(true);
 
     try {
       const currentUser = auth.currentUser;
-      if (!currentUser || !currentUser.isAnonymous) {
-         Alert.alert('Error', 'No se ha encontrado un usuario invitado.');
-         return;
+
+      if (currentUser && currentUser.isAnonymous) {
+
+        const credential = EmailAuthProvider.credential(email, password);
+
+        const userCredential = await linkWithCredential(currentUser, credential);
+        const user = userCredential.user;
+
+        console.log("Cuenta anónima convertida exitosamente:", user.uid);
+
+        await setDoc(doc(db, "PerfilDatos", user.uid), {
+          nombre: nombre,
+          email: email.toLowerCase(),
+          edad: parseInt(edad, 10),
+          altura: parseInt(altura, 10),
+        }, { merge: true });
+
+        await user.reload();
+      } else {
+
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        await setDoc(doc(db, "PerfilDatos", user.uid), {
+          uid: user.uid,
+          nombre: nombre,
+          email: email.toLowerCase(),
+          edad: parseInt(edad, 10),
+          altura: parseInt(altura, 10),
+          fechaCreacion: new Date()
+        });
       }
 
-      // 1. Crear la credencial de Email/Password
-      const credential = EmailAuthProvider.credential(email, password);
+      Alert.alert('¡Bienvenido!', 'Tu cuenta ha sido registrada y tus datos guardados.');
 
-      // 2. Vincular la credencial a la cuenta anónima actual
-      const userCredential = await linkWithCredential(currentUser, credential);
-      const user = userCredential.user; // Este usuario ya NO es anónimo
-
-      console.log('¡Cuenta anónima vinculada exitosamente!', user.uid);
-
-      // 3. Guardar la información adicional en Firestore (en "PerfilDatos")
-      // Usamos el MISMO UID que ya tenía el usuario anónimo
-      await setDoc(doc(db, "PerfilDatos", user.uid), {
-        uid: user.uid,
-        nombre: nombre,
-        email: email.toLowerCase(),
-        edad: parseInt(edad, 10), // Guardar como número
-        altura: parseInt(altura, 10), // Guardar como número
-        fechaCreacion: new Date(),
-      });
-
-      Alert.alert('¡Éxito!', 'Usuario registrado correctamente.');
       if (onSuccessfulRegister) {
-        onSuccessfulRegister(); // Llama a la función para cerrar el modal
+        onSuccessfulRegister();
       }
-      
+
     } catch (error) {
+      setLoading(false); 
       console.error("Error en el registro: ", error);
-      Alert.alert('Error', error.message);
+
+      if (error.code === 'auth/credential-already-in-use') {
+        Alert.alert('Error', 'Este correo ya está asociado a otra cuenta. Por favor, inicia sesión en lugar de registrarte.');
+      } else if (error.code === 'auth/weak-password') {
+        Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        Alert.alert('Error', 'Ese correo ya está en uso.');
+      } else {
+        Alert.alert('Error', error.message);
+      }
     }
   };
 
@@ -82,13 +107,12 @@ const LoginFormulario = ({ onSuccessfulRegister }) => {
       <Text style={styles.label}>Contraseña</Text>
       <TextInput
         style={styles.input}
-        placeholder="Tu contraseña segura"
+        placeholder="Crea una contraseña"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry // Oculta la contraseña
+        secureTextEntry
       />
 
-      {/* Fila para Edad y Altura */}
       <View style={styles.row}>
         <View style={styles.column}>
           <Text style={styles.label}>Edad</Text>
@@ -112,29 +136,29 @@ const LoginFormulario = ({ onSuccessfulRegister }) => {
         </View>
       </View>
 
-      {/* Botones */}
-      <TouchableOpacity style={styles.buttonGreen} onPress={handleSignUpAndLink}>
-        <Text style={styles.buttonTextWhite}>Guardar</Text>
+      <TouchableOpacity style={styles.buttonGreen} onPress={handleRegistro}>
+        {loading ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={styles.buttonTextWhite}>Guardar y Registrar</Text>
+        )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.buttonWhite} onPress={onSuccessfulRegister}>
-        <Text style={styles.buttonTextBlack}>Cancelar</Text>
-      </TouchableOpacity>
+      {}
+      {onSuccessfulRegister && !loading && (
+        <TouchableOpacity style={styles.buttonWhite} onPress={onSuccessfulRegister}>
+          <Text style={styles.buttonTextBlack}>Cancelar</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
 
-// Estilos inspirados en tu imagen
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   title: {
     fontSize: 22,
@@ -149,7 +173,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   input: {
-    backgroundColor: '#f4f4f5', // Gris claro como en tu imagen
+    backgroundColor: '#f4f4f5',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 15,
@@ -163,10 +187,10 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
-    marginHorizontal: 5, // Pequeño espacio entre columnas
+    marginHorizontal: 5,
   },
   buttonGreen: {
-    backgroundColor: '#28a745', // Verde de tu imagen
+    backgroundColor: '#28a745',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -183,7 +207,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#dcdcdc', // Borde gris claro
+    borderColor: '#dcdcdc',
   },
   buttonTextBlack: {
     color: '#333',
