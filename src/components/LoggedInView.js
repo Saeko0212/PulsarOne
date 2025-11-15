@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { auth, db } from '../database/firebaseconfig.js';
 import { signOut } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, orderBy, deleteDoc, limit, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy, deleteDoc,
+   limit, where, getDocs, updateDoc } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 import EditarPerfilModal from './EditarPerfilModal';
 import FormularioMedicion from './FormularioMedicion'; 
@@ -29,7 +31,6 @@ const MedicionItem = ({ item, onEdit, onDelete }) => {
           {fecha.toDate().toLocaleDateString('es-ES')}
         </Text>
         <View style={styles.medicionIcons}>
-          {}
           <TouchableOpacity onPress={() => onEdit(item)}>
             <FontAwesome name="pencil" size={20} color="#333" />
           </TouchableOpacity>
@@ -56,6 +57,7 @@ const LoggedInView = () => {
   
   const [imcData, setImcData] = useState({ imc: null, categoria: 'Calculando...' });
   const [pesoObjetivoCalculado, setPesoObjetivoCalculado] = useState(null);
+  const [profileImage, setProfileImage] = useState(null); 
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [medicionModalVisible, setMedicionModalVisible] = useState(false);
@@ -67,6 +69,74 @@ const LoggedInView = () => {
   
   const user = auth.currentUser;
 
+  const seleccionarImagen = async () => {
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tus fotos para cambiar el perfil.');
+      return;
+    }
+
+    const resultado = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, 
+      aspect: [1, 1], 
+      quality: 0.4, 
+      base64: true, 
+    });
+
+    if (!resultado.canceled) {
+      const base64Img = `data:image/jpeg;base64,${resultado.assets[0].base64}`;
+      
+      setProfileImage(base64Img);
+
+      try {
+        const docRef = doc(db, 'PerfilDatos', user.uid);
+        await updateDoc(docRef, {
+          foto: base64Img 
+        });
+      } catch (error) {
+        console.error("Error al guardar foto:", error);
+        Alert.alert("Error", "No se pudo guardar la foto en la nube.");
+      }
+    }
+  };
+
+  const eliminarImagen = async () => {
+    setProfileImage(null);
+
+    try {
+      const docRef = doc(db, 'PerfilDatos', user.uid);
+      await updateDoc(docRef, {
+        foto: null 
+      });
+    } catch (error) {
+      console.error("Error al eliminar foto:", error);
+      Alert.alert("Error", "No se pudo eliminar la foto de la nube.");
+    }
+  };
+
+  const handleProfileImagePress = () => {
+    if (profileImage) {
+      Alert.alert(
+        'Foto de Perfil',
+        '¿Qué deseas hacer?',
+        [
+          {
+            text: 'Seleccionar otra foto',
+            onPress: seleccionarImagen,
+          },
+          {
+            text: 'Eliminar foto actual',
+            onPress: eliminarImagen,
+            style: 'destructive', 
+          },
+          { text: 'Cancelar', style: 'cancel' },
+        ]
+      );
+    } else {
+      seleccionarImagen();
+    }
+  };
   const calcularImcAPI = async (pesoKg, alturaM, edad) => {
     try {
       const API_URL = "https://3hj4dtla5i.execute-api.us-east-2.amazonaws.com/calcular-imc"; 
@@ -125,7 +195,15 @@ const LoggedInView = () => {
     }
     const docRef = doc(db, 'PerfilDatos', user.uid);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      docSnap.exists() ? setUserData(docSnap.data()) : setUserData(null);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserData(data);
+        if (data.foto) {
+          setProfileImage(data.foto);
+        }
+      } else {
+        setUserData(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -237,17 +315,28 @@ const LoggedInView = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      
-      {}
       <Text style={styles.mainTitle}>Mi Perfil</Text>
       <Text style={styles.mainSubtitle}>Gestiona tu información personal</Text> 
 
-      {}
       <View style={styles.card}>
         <View style={styles.profileHeader}>
-          <Image source={require('../Image/Logo.png')}
-            style={styles.profileImage}
-          />
+          <TouchableOpacity onPress={handleProfileImagePress}>
+            {profileImage ? (
+              <Image 
+                source={{ uri: profileImage }} 
+                style={styles.profileImage} 
+              />
+            ) : (
+              <View style={[styles.profileImage, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>
+                  {userData?.nombre ? userData.nombre.charAt(0).toUpperCase() : ''}
+                </Text>
+              </View>
+            )}
+            <View style={styles.cameraIconOverlay}>
+               <FontAwesome name="camera" size={12} color="#fff" />
+            </View>
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{userData.nombre}</Text>
             <Text style={styles.profileEmail}>{userData.email}</Text>
@@ -274,14 +363,11 @@ const LoggedInView = () => {
         </View>
       </View>
 
-      {}
       <View style={styles.card}>
-        {}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.cardBlue]}>
           <Text style={styles.statCardTitle}>Peso Actual</Text>
           <Text style={styles.statCardValue}>
-            {}
             {mediciones.length > 0 ? `${mediciones[0].peso} kg` : '-- kg'}
           </Text>
         </View>
@@ -291,8 +377,6 @@ const LoggedInView = () => {
               {userData.altura ? `${userData.altura} cm` : '--'}
             </Text>
           </View>
-          
-          {}
           <View style={[styles.statCard, styles.cardPurple]}>
             <Text style={styles.statCardTitle}>Objetivo</Text>
             <Text style={styles.statCardValue}>
@@ -300,7 +384,6 @@ const LoggedInView = () => {
             </Text>
           </View>
 
-          {}
           <View style={[styles.statCard, styles.cardOrange]}>
             <Text style={styles.statCardTitle}>IMC</Text>
             <Text style={styles.statCardValue}>
@@ -313,7 +396,6 @@ const LoggedInView = () => {
         </View>
       </View>
 
-      {}
       <View style={styles.card}>
         <View style={styles.datosFisicosHeader}>
           <Text style={styles.datosFisicosTitle}>Datos Físicos</Text>
@@ -326,7 +408,6 @@ const LoggedInView = () => {
           </TouchableOpacity>
         </View>
 
-        {}
         {mediciones.length > 0 ? (
           mediciones.map((item) => (
             <MedicionItem 
@@ -344,12 +425,10 @@ const LoggedInView = () => {
         )}
       </View>
 
-      {}
       <EditarPerfilModal visible={editModalVisible} onClose={() => setEditModalVisible(false)} currentUserData={userData} />
       <FormularioMedicion visible={medicionModalVisible} onClose={() => setMedicionModalVisible(false)} />
       <EditarMedicionModal visible={editMedicionModalVisible} onClose={() => { setEditMedicionModalVisible(false); setMedicionToEdit(null); }} medicionToEdit={medicionToEdit} />
 
-      {}
       <EliminarMedicionModal
         visible={deleteModalVisible}
         onClose={() => {
@@ -410,6 +489,31 @@ const styles = StyleSheet.create({
     height: 70, 
     borderRadius: 35, 
     marginRight: 15, 
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#008000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  cameraIconOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 15,
+    backgroundColor: '#28a745',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff'
   },
   profileInfo: { 
     flex: 1, 

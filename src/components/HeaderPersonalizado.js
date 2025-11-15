@@ -59,7 +59,7 @@ const HeaderPersonalizado = ({ navigation, canGoBack, routeName }) => {
         </View>
         
         {}
-        <View style={styles.headerButton} />
+        <View style={styles.headerButton} /> 
 
       </View>
     </View>

@@ -9,13 +9,14 @@ import {
   Dimensions, 
   TouchableWithoutFeedback,
   ScrollView,
-  Platform
+  Platform,
+  Image,
 } from 'react-native';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 
 const { width, height } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.8; 
@@ -47,6 +48,7 @@ const DrawerDer = ({ visible, onClose, navigation }) => {
   const [userName, setUserName] = useState('Cargando...');
   const [userEmail, setUserEmail] = useState('');
   const [initials, setInitials] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
     if (visible) {
@@ -68,28 +70,34 @@ const DrawerDer = ({ visible, onClose, navigation }) => {
     const auth = getAuth();
     const db = getFirestore();
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeSnapshot = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUserEmail(user.email); 
         
         const docRef = doc(db, 'PerfilDatos', user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const nombre = docSnap.data().nombre;
-          setUserName(nombre); 
-          setInitials(nombre.charAt(0).toUpperCase()); 
-        } else {
-          setUserName('Usuario');
-          setInitials('U');
-        }
+        unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const nombre = data.nombre || 'Usuario';
+            setUserName(nombre); 
+            setInitials(nombre.charAt(0).toUpperCase());
+            setProfileImage(data.foto || null);
+          } else {
+            setUserName('Usuario');
+            setInitials('U');
+            setProfileImage(null);
+          }
+        });
       } else {
         setUserName('Invitado');
         setInitials('I');
+        setProfileImage(null);
       }
     });
 
-    return () => unsubscribe(); 
+    return () => { unsubscribeAuth(); unsubscribeSnapshot(); }; 
   }, []); 
 
   const handleSignOut = () => {
@@ -133,10 +141,13 @@ const DrawerDer = ({ visible, onClose, navigation }) => {
       >
         {}
         <View style={styles.profileHeader}>
-          {}
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          )}
           <Text style={styles.userName}>{userName}</Text>
           <Text style={styles.userEmail}>{userEmail}</Text>
         </View>
@@ -186,6 +197,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#d4e0d4',
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   avatarPlaceholder: {
     width: 80,
