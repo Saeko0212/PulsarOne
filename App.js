@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useRef } from 'react';
+import { SafeAreaView, StyleSheet, Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ActivityIndicator, View } from 'react-native';
 import 'react-native-gesture-handler';
-import { auth } from './src/database/firebaseconfig.js'; 
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import Mytabs from './src/Navigation/Navegacion.js';
+
+import Mytabs from './Navegacion'; 
 import HeaderPersonalizado from './src/components/HeaderPersonalizado';
+
 import Rutinas from './src/views/Rutinas.js';
 import Objetivos from './src/views/Objetivos.js';
 import Nutricion from './src/views/Nutricion.js';
@@ -17,54 +18,60 @@ import Ranking from './src/views/Ranking.js';
 
 const Stack = createStackNavigator();
 
+export const navigationRef = createNavigationContainerRef();
+
 export default function App() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setLoading(false);
-      } else {
-        signInAnonymously(auth)
-          .catch(error => {
-            console.error("Error al iniciar sesión anónima:", error);
-          });
-      }
-    });
-
-    return () => unsubscribe(); 
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [routeName, setRouteName] = useState('');
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={(props) => ({
-          header: () => <HeaderPersonalizado {...props} />
-        })
-      }
-      >
+    <SafeAreaProvider>
+      {}
+      <SafeAreaView style={styles.container}>
+        
         {}
-        <Stack.Screen
-          name="AppTabs" 
-          component={Mytabs}
+        {}
+        <HeaderPersonalizado 
+          navigation={navigationRef}
+          canGoBack={canGoBack} 
+          routeName={routeName} 
         />
+        
         {}
-        <Stack.Screen name="Rutinas" component={Rutinas} />
-        <Stack.Screen name="Objetivos" component={Objetivos} />
-        <Stack.Screen name="Nutricion" component={Nutricion} />
-        <Stack.Screen name="Sueño" component={Sueño} />
-        <Stack.Screen name="Timer" component={Timer} />
-        <Stack.Screen name="Ejercicios" component={Ejercicios} />
-        <Stack.Screen name="Ranking" component={Ranking} />
-      </Stack.Navigator>
-    </NavigationContainer>
+        {}
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={() => {
+            setCanGoBack(navigationRef.canGoBack());
+            setRouteName(navigationRef.getCurrentRoute()?.name);
+          }}
+        >
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false, 
+            }}
+          >
+            {}
+            <Stack.Screen name="AppTabs" component={Mytabs} />
+            <Stack.Screen name="Rutinas" component={Rutinas} />
+            <Stack.Screen name="Objetivos" component={Objetivos} />
+            <Stack.Screen name="Nutricion" component={Nutricion} />
+            <Stack.Screen name="Sueño" component={Sueño} />
+            <Stack.Screen name="Timer" component={Timer} />
+            <Stack.Screen name="Ejercicios" component={Ejercicios} />
+            <Stack.Screen name="Ranking" component={Ranking} />
+            
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF', 
+    paddingTop: Platform.OS === 'android' ? 25 : 0,
+  }
+});
