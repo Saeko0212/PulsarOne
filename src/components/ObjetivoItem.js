@@ -1,9 +1,20 @@
-// components/ObjetivoItem.js
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'; 
 import { FontAwesome } from '@expo/vector-icons';
 
-// Componente de la barra de progreso
+const getTagColors = (categoria) => {
+  switch (categoria) {
+    case 'Frecuencia':
+      return { bg: '#F3E8FF', text: '#A855F7' }; 
+    case 'Peso':
+      return { bg: '#eef6ff', text: '#3b82f6' }; 
+    case 'Fuerza':
+      return { bg: '#ffe4e6', text: '#e11d48' }; 
+    default:
+      return { bg: '#eef6ff', text: '#3b82f6' }; 
+  }
+};
+
 const ProgressBar = ({ progress }) => {
   const clampedProgress = Math.max(0, Math.min(progress, 100));
   return (
@@ -13,16 +24,15 @@ const ProgressBar = ({ progress }) => {
   );
 };
 
-// Componente del item
-const ObjetivoItem = ({ item, latestWeight }) => {
-  let progress = 0;
+const ObjetivoItem = ({ item, latestWeight, trainingDaysCount, onFinalizar }) => {
   let progressText = 'N/A';
   let percentage = 0;
   const target = item.objetivoValor;
-
+  
   if (item.categoria === 'Peso' && latestWeight !== null && item.pesoInicial) {
     const start = item.pesoInicial;
     const current = latestWeight;
+    let progress = 0;
     if (item.tipoMeta === 'perder') {
       progress = start - current;
     } else if (item.tipoMeta === 'ganar') {
@@ -31,23 +41,53 @@ const ObjetivoItem = ({ item, latestWeight }) => {
     progress = Math.max(0, Math.min(progress, target));
     percentage = (progress / target) * 100;
     progressText = `${progress.toFixed(1)} / ${target} ${item.unidad}`;
-  } else if (item.categoria !== 'Peso') {
-    progressText = `${item.progresoActual} / ${target} ${item.unidad}`;
+
+  } else if (item.categoria === 'Frecuencia') {
+    const diasEntrenados = trainingDaysCount || 0;
+    
+    const progress = Math.max(0, Math.min(diasEntrenados, target));
+    percentage = (progress / target) * 100;
+    
+    const unidad = item.unidad || 'días'; 
+    progressText = `${diasEntrenados} / ${target} ${unidad}`;
+  } else {
+    progressText = `${item.progresoActual || 0} / ${target} ${item.unidad}`;
     percentage = (item.progresoActual / target) * 100;
   }
 
+  const tagColors = getTagColors(item.categoria);
+  const isCompleted = percentage >= 100; 
+
   return (
-    <View style={styles.objetivoCard}>
+    <View style={[styles.objetivoCard, isCompleted && styles.cardCompletedBorder]}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{item.titulo}</Text>
-        <View style={styles.cardTag}>
-          <Text style={styles.cardTagText}>{item.categoria}</Text>
+        
+        <View style={[styles.cardTag, { backgroundColor: tagColors.bg }]}>
+          <Text style={[styles.cardTagText, { color: tagColors.text }]}>
+            {item.categoria}
+          </Text>
         </View>
       </View>
-      <Text style={styles.progressLabel}>Progreso</Text>
-      <Text style={styles.progressText}>{progressText}</Text>
-      <ProgressBar progress={percentage} />
-      <Text style={styles.progressPercent}>{percentage.toFixed(0)}% completado</Text>
+      
+      {}
+      {isCompleted ? (
+        <View style={styles.completedContainer}>
+          <Text style={styles.completedText}>¡Meta Alcanzada! 🎉</Text>
+          <TouchableOpacity style={styles.finishButton} onPress={() => onFinalizar(item)}>
+            <Text style={styles.finishButtonText}>Guardar en Historial</Text>
+            <FontAwesome name="check" size={16} color="#fff" style={{marginLeft: 5}} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.progressLabel}>Progreso</Text>
+          <Text style={styles.progressText}>{progressText}</Text>
+          <ProgressBar progress={percentage} />
+          <Text style={styles.progressPercent}>{percentage.toFixed(0)}% completado</Text>
+        </>
+      )}
+      
       <View style={styles.dateContainer}>
         <FontAwesome name="calendar-o" size={16} color="#555" />
         <Text style={styles.dateText}>Fecha Límite:</Text>
@@ -59,7 +99,6 @@ const ObjetivoItem = ({ item, latestWeight }) => {
   );
 };
 
-// Estilos
 const styles = StyleSheet.create({
   objetivoCard: {
     backgroundColor: '#fff',
@@ -71,6 +110,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+  },
+  cardCompletedBorder: {
+    borderColor: '#28a745',
+    borderWidth: 2,
+  },
+  completedContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  completedText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#28a745',
+    marginBottom: 10,
+  },
+  finishButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  finishButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -84,13 +149,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTag: {
-    backgroundColor: '#eef6ff',
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   cardTagText: {
-    color: '#3b82f6',
     fontWeight: 'bold',
     fontSize: 12,
   },

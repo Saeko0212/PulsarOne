@@ -2,17 +2,33 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 
+const getTagColors = (categoria) => {
+  switch (categoria) {
+    case 'Frecuencia':
+      return { bg: '#F3E8FF', text: '#A855F7' }; 
+    case 'Peso':
+      return { bg: '#eef6ff', text: '#3b82f6' };
+    default:
+      return { bg: '#eef6ff', text: '#3b82f6' };
+  }
+};
+
 const ObjetivoCompletadoItem = ({ item }) => {
+  const tagColors = getTagColors(item.categoria);
+
   return (
     <View style={[styles.objetivoCard, styles.completadoCard]}>
       <View style={styles.cardHeader}>
         <FontAwesome name="trophy" size={24} color="#10b981" />
-        <View style={[styles.cardTag, styles.completadoTag]}>
-          <Text style={[styles.cardTagText, styles.completadoTagText]}>
+        
+        {}
+        <View style={[styles.cardTag, styles.completadoTag, { borderColor: tagColors.text }]}>
+          <Text style={[styles.cardTagText, { color: tagColors.text }]}>
             {item.categoria}
           </Text>
         </View>
       </View>
+      
       <Text style={[styles.cardTitle, { marginTop: 10 }]}>{item.titulo}</Text>
       {item.descripcion && (
          <Text style={styles.cardDescription}>{item.descripcion}</Text>
@@ -57,22 +73,16 @@ const styles = StyleSheet.create({
   },
   completadoTag: {
     backgroundColor: 'transparent',
-    borderColor: '#10b981',
     borderWidth: 1,
   },
   cardTag: {
-    backgroundColor: '#eef6ff',
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   cardTagText: {
-    color: '#3b82f6',
     fontWeight: 'bold',
     fontSize: 12,
-  },
-  completadoTagText: {
-    color: '#10b981',
   },
   cardDescription: {
     fontSize: 14,

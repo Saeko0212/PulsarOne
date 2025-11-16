@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, Modal, TouchableOpacity, 
-  StyleSheet, Alert, ScrollView, ActivityIndicator
+  StyleSheet, Alert, KeyboardAvoidingView, Platform 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { db, auth } from '../database/firebaseconfig.js';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore'; 
 
 const FormularioMetasNutricion = ({ visible, onClose, onGoalsUpdated }) => {
   const [calorias, setCalorias] = useState('');
   const [proteina, setProteina] = useState('');
   const [carbos, setCarbos] = useState('');
   const [grasas, setGrasas] = useState('');
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (visible && auth.currentUser) {
@@ -23,18 +22,24 @@ const FormularioMetasNutricion = ({ visible, onClose, onGoalsUpdated }) => {
 
   const cargarMetasActuales = async () => {
     try {
-      const docRef = doc(db, "PerfilDatos", auth.currentUser.uid);
+      const docRef = doc(db, "metasNutricionales", auth.currentUser.uid);
       const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists() && docSnap.data().metasNutricionales) {
-        const metas = docSnap.data().metasNutricionales;
-        setCalorias(metas.calorias.toString());
-        setProteina(metas.proteina.toString());
-        setCarbos(metas.carbos.toString());
-        setGrasas(metas.grasas.toString());
+      if (docSnap.exists()) { 
+        const metas = docSnap.data();
+        setCalorias(metas.calorias?.toString() || '');
+        setProteina(metas.proteina?.toString() || '');
+        setCarbos(metas.carbos?.toString() || '');
+        setGrasas(metas.grasas?.toString() || '');
+      } else {
+        setCalorias('');
+        setProteina('');
+        setCarbos('');
+        setGrasas('');
       }
     } catch (error) {
       console.log("Error cargando metas:", error);
+      Alert.alert("Error", "No se pudieron cargar las metas existentes.");
     }
   };
 
@@ -44,180 +49,181 @@ const FormularioMetasNutricion = ({ visible, onClose, onGoalsUpdated }) => {
       return;
     }
 
-    setLoading(true);
     try {
       const userId = auth.currentUser.uid;
-      const userRef = doc(db, "PerfilDatos", userId);
+      const userGoalsDocRef = doc(db, "metasNutricionales", userId);
 
-      await setDoc(userRef, {
-        metasNutricionales: {
-          calorias: Number(calorias),
-          proteina: Number(proteina),
-          carbos: Number(carbos),
-          grasas: Number(grasas),
-          ultimaActualizacion: new Date()
-        }
-      }, { merge: true });
+      await setDoc(userGoalsDocRef, { 
+        calorias: Number(calorias),
+        proteina: Number(proteina),
+        carbos: Number(carbos),
+        grasas: Number(grasas),
+        ultimaActualizacion: new Date(),
+        userId: userId 
+      });
 
       Alert.alert("Éxito", "Metas actualizadas correctamente");
-      if (onGoalsUpdated) onGoalsUpdated();
+      if (onGoalsUpdated) onGoalsUpdated(); 
       onClose();
     } catch (e) {
       console.error("Error al guardar metas: ", e);
-      Alert.alert("Error", "No se pudieron guardar las metas");
-    } finally {
-      setLoading(false);
+      Alert.alert("Error", "No se pudieron guardar las metas. Intenta de nuevo.");
     }
   };
 
   return (
     <Modal
-      animationType="fade" 
+      animationType="fade"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Configurar Metas Diarias</Text>
-              <TouchableOpacity onPress={onClose}>
-                <Text style={styles.closeIcon}>×</Text>
-              </TouchableOpacity>
-            </View>
+      <View style={styles.centeredView}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalView}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Configurar Metas Diarias</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
 
-            {}
-            <Text style={styles.label}>Calorías</Text>
-            <TextInput
-              style={styles.inputSlight}
-              placeholder="Ej: 2000"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-              value={calorias}
-              onChangeText={setCalorias}
-            />
+          <Text style={styles.label}>Calorías</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 2000"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            value={calorias}
+            onChangeText={setCalorias}
+          />
 
-            {}
-            <Text style={styles.label}>Proteína (g)</Text>
-            <TextInput
-              style={styles.inputSlight}
-              placeholder="Ej: 150"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-              value={proteina}
-              onChangeText={setProteina}
-            />
+          <Text style={styles.label}>Proteína (g)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 150"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            value={proteina}
+            onChangeText={setProteina}
+          />
 
-            {}
-            <Text style={styles.label}>Carbohidratos (g)</Text>
-            <TextInput
-              style={styles.inputSlight}
-              placeholder="Ej: 200"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-              value={carbos}
-              onChangeText={setCarbos}
-            />
+          <Text style={styles.label}>Carbohidratos (g)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 200"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            value={carbos}
+            onChangeText={setCarbos}
+          />
 
-            {}
-            <Text style={styles.label}>Grasas (g)</Text>
-            <TextInput
-              style={styles.inputSlight}
-              placeholder="Ej: 65"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-              value={grasas}
-              onChangeText={setGrasas}
-            />
+          <Text style={styles.label}>Grasas (g)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 65"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            value={grasas}
+            onChangeText={setGrasas}
+          />
 
-            {}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.btnGuardar} 
-                onPress={guardarMetas}
-                disabled={loading}
-              >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnTextWhite}>Guardar</Text>}
-              </TouchableOpacity>
+          <TouchableOpacity style={styles.btnGuardar} onPress={guardarMetas}>
+            <Text style={styles.textBtnGuardar}>Guardar</Text>
+          </TouchableOpacity>
 
-              <TouchableOpacity style={styles.btnCancelar} onPress={onClose}>
-                <Text style={styles.btnTextBlack}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
+          <TouchableOpacity style={styles.btnCancelar} onPress={onClose}>
+            <Text style={styles.textBtnCancelar}>Cancelar</Text>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  centeredView: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 10,
-    padding: 20,
-    maxHeight: '90%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  title: {
+  modalView: {
+    width: '85%',
+    maxWidth: 350,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#000',
   },
-  closeIcon: {
-    fontSize: 24,
-    color: '#999',
+  closeButton: {
+    position: 'absolute',
+    right: 0,
+    top: -5,
   },
   label: {
+    alignSelf: 'flex-start',
+    fontWeight: '600',
+    marginBottom: 5,
     fontSize: 14,
     color: '#333',
-    marginBottom: 5,
-    fontWeight: '500',
   },
-  inputSlight: {
-    backgroundColor: '#F5F6F8',
+  input: {
+    width: '100%',
+    backgroundColor: '#F0F2F5',
     borderRadius: 8,
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     marginBottom: 15,
+    fontSize: 16,
     color: '#333',
-  },
-  actionButtons: {
-    marginTop: 20,
   },
   btnGuardar: {
-    backgroundColor: '#28A745',
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: '#10B981',
+    borderRadius: 10,
+    paddingVertical: 12,
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 20,
+  },
+  textBtnGuardar: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   btnCancelar: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    padding: 15,
-    borderRadius: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    width: '100%',
     alignItems: 'center',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
   },
-  btnTextWhite: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  btnTextBlack: {
+  textBtnCancelar: {
     color: '#333',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 16,
   }
 });
 

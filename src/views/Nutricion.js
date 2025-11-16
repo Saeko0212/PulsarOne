@@ -4,10 +4,9 @@ import {
   Text, TouchableOpacity, Alert 
 } from 'react-native';
 import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db, auth } from '../database/firebaseconfig.js';
+import { db, auth } from '../database/firebaseconfig';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-// Componentes
 import FormularioNutricion from '../components/FormularioNutricion';
 import FormularioMetasNutricion from '../components/FormularioMetasNutricion';
 import ResumenHoyNutricion from '../components/ResumenHoyNutricion';
@@ -15,14 +14,10 @@ import ResumenHoyNutricion from '../components/ResumenHoyNutricion';
 const Nutricion = () => {
   const [modalComidaVisible, setModalComidaVisible] = useState(false);
   const [modalMetasVisible, setModalMetasVisible] = useState(false);
-  const [modalListaVisible, setModalListaVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const [metas, setMetas] = useState({
-    calorias: 2000,
-    proteina: 150,
-    carbos: 200,
-    grasas: 65
+    calorias: 2000, proteina: 150, carbos: 200, grasas: 65
   });
 
   const [consumido, setConsumido] = useState({
@@ -47,12 +42,23 @@ const Nutricion = () => {
   const cargarMetas = async () => {
     if (!auth.currentUser) return;
     try {
-      const docRef = doc(db, "PerfilDatos", auth.currentUser.uid);
+      const docRef = doc(db, "metasNutricionales", auth.currentUser.uid);
       const docSnap = await getDoc(docRef);
-      if (docSnap.exists() && docSnap.data().metasNutricionales) {
-        setMetas(docSnap.data().metasNutricionales);
+
+      if (docSnap.exists()) {
+        setMetas(docSnap.data());
+      } else {
+        console.log("No hay metas nutricionales guardadas para este usuario, usando valores por defecto.");
+        setMetas({
+          calorias: 2000, proteina: 150, carbos: 200, grasas: 65
+        });
       }
-    } catch (e) { console.error("Error cargando metas", e); }
+    } catch (e) { 
+      console.error("Error cargando metas:", e);
+      setMetas({
+        calorias: 2000, proteina: 150, carbos: 200, grasas: 65
+      });
+    }
   };
 
   const cargarComidasHoy = async () => {
@@ -66,10 +72,7 @@ const Nutricion = () => {
 
       const querySnapshot = await getDocs(q);
       
-      let totalCal = 0;
-      let totalProt = 0;
-      let totalCarb = 0;
-      let totalGrasa = 0;
+      let totalCal = 0, totalProt = 0, totalCarb = 0, totalGrasa = 0;
       let comidasTemp = [];
 
       querySnapshot.forEach((doc) => {
@@ -86,10 +89,7 @@ const Nutricion = () => {
       });
 
       setConsumido({
-        calorias: totalCal,
-        proteina: totalProt,
-        carbos: totalCarb,
-        grasas: totalGrasa
+        calorias: totalCal, proteina: totalProt, carbos: totalCarb, grasas: totalGrasa
       });
       
       setListaComidas(comidasTemp.sort((a, b) => {

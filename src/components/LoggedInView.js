@@ -224,48 +224,43 @@ const LoggedInView = () => {
 
     return () => unsubscribe();
   }, [user]);
-
   useEffect(() => {
+    let unsubscribeGoal = () => {}; 
+
     if (userData && userData.altura && mediciones.length > 0) {
-
-      const alturaEnMetros = userData.altura / 100;
-
       const pesoActual = mediciones[0].peso;
-
-      const edadActual = userData.edad; 
+      const alturaEnMetros = userData.altura / 100;
+      const edadActual = userData.edad;
 
       calcularImcAPI(pesoActual, alturaEnMetros, edadActual);
 
-      const fetchActiveGoal = async () => {
-        try { 
-          const objRef = collection(db, "Objetivos");
-          const q = query(
-            objRef, 
-            where("userId", "==", user.uid), 
-            where("categoria", "==", "Peso"),
-            orderBy("fechaLimite", "asc"),
-            limit(1)
-          );
+      const objRef = collection(db, "Objetivos");
+      const q = query(
+        objRef, 
+        where("userId", "==", user.uid), 
+        where("categoria", "==", "Peso"),
+        orderBy("creadoEn", "desc"), 
+        limit(1)
+      );
+      
+      unsubscribeGoal = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const objetivoData = snapshot.docs[0].data();
           
-          const snapshot = await getDocs(q);
+          const pesoBaseParaCalculo = objetivoData.pesoInicial || pesoActual;
           
-          if (!snapshot.empty) {
-            const objetivoData = snapshot.docs[0].data();
-            calcularPesoObjetivoAPI(pesoActual, objetivoData);
-          } else {
-            setPesoObjetivoCalculado(null);
-          }
-        } catch (error) {
-          console.error("Error al buscar objetivo activo:", error);
+          calcularPesoObjetivoAPI(pesoBaseParaCalculo, objetivoData);
+        } else {
           setPesoObjetivoCalculado(null);
         }
-      };
-      
-      fetchActiveGoal();
+      });
 
     } else if (!loading) {
       setImcData({ imc: null, categoria: 'Sin datos' });
     }
+
+    return () => unsubscribeGoal();
+
   }, [userData, mediciones, loading]); 
 
   const handleLogout = async () => {
