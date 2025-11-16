@@ -12,11 +12,38 @@ import {
 import { auth, db } from '../database/firebaseconfig';
 import { collection, query, where, onSnapshot, orderBy, limit, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
-
 import FormularioObjetivos from '../components/FormularioObjetivos';
 import ObjetivoItem from '../components/ObjetivoItem';
-import ListaObjetivosCompletados from '../components/ListaObjetivosCompletados';
+import ListaObjetivosCompletados from '../components/ListaObjetivosCompletados'; 
 
+const calcularPorcentajeIndividual = (item, latestWeight, trainingDaysCount) => {
+  let percentage = 0;
+  const target = item.objetivoValor;
+
+  if (item.categoria === 'Peso' && latestWeight !== null && item.pesoInicial) {
+    const start = item.pesoInicial;
+    const current = latestWeight;
+    let progress = 0;
+    
+    if (item.tipoMeta === 'perder') progress = start - current;
+    else if (item.tipoMeta === 'ganar') progress = current - start;
+    
+    const progressClamped = Math.max(0, Math.min(progress, target));
+    percentage = (progressClamped / target) * 100;
+
+  } else if (item.categoria === 'Frecuencia') {
+    const dias = trainingDaysCount || 0;
+    const progressClamped = Math.max(0, Math.min(dias, target));
+    percentage = (progressClamped / target) * 100;
+
+  } else {
+    // Otros
+    const progressClamped = Math.max(0, Math.min(item.progresoActual || 0, target));
+    percentage = (progressClamped / target) * 100;
+  }
+
+  return percentage;
+};
 
 const EmptyComponent = ({ onPress }) => (
   <View style={styles.emptyContainer}>
@@ -30,7 +57,6 @@ const EmptyComponent = ({ onPress }) => (
   </View>
 );
 
-
 const Objetivos = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [activos, setActivos] = useState([]);        
@@ -39,6 +65,8 @@ const Objetivos = () => {
   const [latestWeight, setLatestWeight] = useState(null);
   const [trainingDaysCount, setTrainingDaysCount] = useState(0);
 
+  const [promedioGeneral, setPromedioGeneral] = useState(0);
+
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -46,7 +74,7 @@ const Objetivos = () => {
       setLoading(false); return; }
     const objRef = collection(db, "Objetivos");
     const q = query(objRef, where("userId", "==", user.uid), orderBy("fechaLimite", "asc"));
-
+    
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const lista = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setActivos(lista);
@@ -66,7 +94,7 @@ const Objetivos = () => {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const lista = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCompletados(lista);
-    });
+    }, (error) => console.error("Error completados:", error));
     return () => unsubscribe();
   }, [user]);
 
@@ -81,15 +109,56 @@ const Objetivos = () => {
     const qHist = query(historyRef, where('userId', '==', user.uid));
     const unsubHist = onSnapshot(qHist, (s) => {
         const uniqueDates = new Set();
-        s.forEach(d => d.data().fecha && uniqueDates.add(d.data().fecha.toDate().toISOString().split('T')[0]));
+        s.forEach(d => {
+           const data = d.data();
+           if(data.fecha) uniqueDates.add(data.fecha.toDate().toISOString().split('T')[0]);
+        });
         setTrainingDaysCount(uniqueDates.size);
     });
-
+    
     return () => { 
       unsubPeso(); 
       unsubHist(); 
     };
   }, [user]);
+
+  useEffect(() => {
+    const calcularYEnviarPromedio = async () => {
+      if (activos.length === 0) {
+        setPromedioGeneral(0);
+        return;
+      }
+
+      const listaPorcentajes = [];
+
+      activos.forEach(item => {
+        const p = calcularPorcentajeIndividual(item, latestWeight, trainingDaysCount);
+        listaPorcentajes.push(p);
+      });
+
+
+      try {
+        const API_URL = "https://3hj4dtla5i.execute-api.us-east-2.amazonaws.com/calcular-promedio-general";
+        
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ porcentajes: listaPorcentajes }),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          setPromedioGeneral(data.promedio);
+        }
+      } catch (error) {
+        console.error("Error API Promedio:", error);
+      }
+    };
+
+    calcularYEnviarPromedio();
+
+  }, [activos, latestWeight, trainingDaysCount]); 
+
 
   const handleFinalizarObjetivo = async (item) => {
     try {
@@ -105,7 +174,6 @@ const Objetivos = () => {
       Alert.alert("Error", "No se pudo guardar en el historial.");
     }
   };
-
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -136,9 +204,10 @@ const Objetivos = () => {
             <Text style={styles.statLabel}>Completos</Text>
           </View>
           
+          {}
           <View style={[styles.statCard, styles.cardPurple]}>
             <FontAwesome name="pie-chart" size={24} color="#a855f7" />
-            <Text style={styles.statValue}>--%</Text>
+            <Text style={styles.statValue}>{promedioGeneral}%</Text>
             <Text style={styles.statLabel}>Promedio</Text>
           </View>
         </View>
@@ -175,7 +244,6 @@ const Objetivos = () => {
     </SafeAreaView>
   );
 };
-
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8f9fa' },

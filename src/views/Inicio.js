@@ -1,70 +1,85 @@
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native'
-import React from 'react'
+import React, { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, SafeAreaView, ActivityIndicator, View } from 'react-native';
+import { auth, db } from '../database/firebaseconfig';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth'; 
+
+import HomeHeader from '../components/HomeHeader';
+import StatsGrid from '../components/StatsGrid';
+import RecentWorkouts from '../components/RecentWorkouts';
+import MotivationCard from '../components/MotivationCard';
 
 const Inicio = () => {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null); 
+  
+  const [weeklyWorkoutsCount, setWeeklyWorkoutsCount] = useState(0);
+  const [weeklyGoal, setWeeklyGoal] = useState(6); 
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        
+        const docRef = doc(db, 'PerfilDatos', currentUser.uid);
+        const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserData(docSnap.data());
+          }
+          setLoading(false);
+        });
+
+        return () => unsubscribeSnapshot();
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#28a745" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {/* --- SECCIÓN DE BIENVENIDA --- */}
-        <View style={styles.welcomeContainer}>
-          
-          {/* Contenedor para los textos */}
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>¡Bienvenido de vuelta!</Text>
-            <Text style={styles.subtitle}>Aquí está tu resumen de fitness de hoy</Text>
-          </View>
+        {}
+        <HomeHeader userData={userData} />
 
-          {/* Círculo gris (placeholder de perfil) */}
-          <View style={styles.profilePlaceholder} />
+        {}
+        <StatsGrid onWeeklyDaysUpdate={setWeeklyWorkoutsCount} onWeeklyGoalUpdate={setWeeklyGoal} />
 
-        </View>
-        {/* --- FIN DE SECCIÓN --- */}
+        {}
+        <RecentWorkouts />
 
-        {/* <Text>PulsarOne - Contenido de Inicio</Text> */} 
-        {/* (Comentamos el texto anterior) */}
-        
-      </View>
+        {}
+        <MotivationCard weeklyWorkouts={weeklyWorkoutsCount} weeklyGoal={weeklyGoal} />
+
+      </ScrollView>
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa', 
   },
-  body: {
-    flex: 1,
-    // Quitamos justifyContent y alignItems para alinear arriba
+  scrollContent: {
     padding: 20,
   },
-  // --- Estilos para la bienvenida ---
-  welcomeContainer: {
-    flexDirection: 'row', // Pone los textos y el círculo uno al lado del otro
-    justifyContent: 'space-between', // Empuja el texto a la izq. y el círculo a la der.
-    alignItems: 'center', // Los centra verticalmente
-    marginBottom: 24, // Espacio antes del siguiente elemento (las tarjetas)
-  },
-  textContainer: {
-    flex: 1, // Permite que el texto ocupe el espacio y se ajuste
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000', // Color negro
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666666', // Color gris oscuro
-  },
-  profilePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30, // La mitad del ancho/alto para hacerlo un círculo
-    backgroundColor: '#E0E0E0', // Color gris claro
-    marginLeft: 16, // Espacio para que el texto no se pegue si es muy largo
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
-export default Inicio
+
+export default Inicio;
