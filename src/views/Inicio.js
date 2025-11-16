@@ -32,6 +32,8 @@ const Inicio = () => {
 
         return () => unsubscribeSnapshot();
       } else {
+        setUser(null);
+        setUserData(null);
         setLoading(false);
       }
     });

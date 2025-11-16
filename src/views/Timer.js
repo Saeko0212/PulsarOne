@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, SafeAreaView, Text, Alert } from 'react-native';
+import { 
+  View, StyleSheet, ScrollView, SafeAreaView, Text, 
+  Alert, TouchableOpacity 
+} from 'react-native';
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db, auth } from '../database/firebaseconfig.js';
 import { onAuthStateChanged } from 'firebase/auth';
 
-import CronometroEntrenamiento from '../components/CronometroEntrenamiento';
-import SelectorRutina from '../components/SelectorRutina';
-import PanelSeguimiento from '../components/PanelSeguimiento';
+import SelectorPrograma from '../components/SelectorPrograma';
+import SelectorDia from '../components/SelectorDia';
+import PanelSeguimiento from '../components/PanelSeguimiento'; 
 import TimerDescanso from '../components/TimerDescanso';
-import ConfirmacionModal from '../components/ConfirmacionModal';
-
+import TimersRapidos from '../components/TimersRapidos';
 const formatTiempo = (totalSegundos) => {
   const minutos = Math.floor(totalSegundos / 60);
   const segundos = totalSegundos % 60;
@@ -31,127 +33,156 @@ const parsearSeriesReps = (texto) => {
 const Timer = () => {
   const [userId, setUserId] = useState(null);
 
-  const [rutinas, setRutinas] = useState([]);
-  const [rutinaSeleccionada, setRutinaSeleccionada] = useState(null);
+  const [programas, setProgramas] = useState([]);
+  const [rutinasMap, setRutinasMap] = useState({});
+  
+  const [programaSeleccionado, setProgramaSeleccionado] = useState(null);
+  const [listaDias, setListaDias] = useState([]);
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
 
-  const [entrenamientoActivo, setEntrenamientoActivo] = useState(false);
-  const [tiempoEntrenamiento, setTiempoEntrenamiento] = useState(0);
-
-  const [indiceEjercicio, setIndiceEjercicio] = useState(0); 
-  const [seriesActuales, setSeriesActuales] = useState(1); 
-  const [datosEjercicioActual, setDatosEjercicioActual] = useState(null); 
+  const [ejerciciosDelDia, setEjerciciosDelDia] = useState([]); 
+  const [indiceEjercicio, setIndiceEjercicio] = useState(0);
+  const [seriesActuales, setSeriesActuales] = useState(1);
+  const [datosEjercicioActual, setDatosEjercicioActual] = useState(null);
   const [totalSeriesCompletadas, setTotalSeriesCompletadas] = useState(0); 
   
+  const [entrenamientoActivo, setEntrenamientoActivo] = useState(false);
+  const [tiempoEntrenamiento, setTiempoEntrenamiento] = useState(0); 
   const [tiempoDescanso, setTiempoDescanso] = useState(0);
   const [descansoConfigurado, setDescansoConfigurado] = useState(60);
   const [descansoActivo, setDescansoActivo] = useState(false);
   const [descansoTerminado, setDescansoTerminado] = useState(false);
 
-  const [modalConfirmacionVisible, setModalConfirmacionVisible] = useState(false);
-  const [modalFinRutinaVisible, setModalFinRutinaVisible] = useState(false);
-
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if(user) {
         setUserId(user.uid);
-        cargarRutinas(user.uid);
+        cargarDatos(user.uid);
+      } else {
+        setUserId(null);
+        setProgramas([]);
+        setRutinasMap({});
       }
     });
-    return () => unsubscribe();
+    return unsub;
   }, []);
 
-  const cargarRutinas = async (uid) => {
+  const cargarDatos = async (uid) => {
     try {
-      const q = query(collection(db, "rutinas"), where("userId", "==", uid));
-      const snap = await getDocs(q);
-      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setRutinas(lista);
-    } catch (error) {
-      console.error("Error cargando rutinas:", error);
-    }
+      const qProg = query(collection(db, "programas"), where("userId", "==", uid));
+      const snapProg = await getDocs(qProg);
+      setProgramas(snapProg.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      const qRut = query(collection(db, "rutinas"), where("userId", "==", uid));
+      const snapRut = await getDocs(qRut);
+      const mapa = {};
+      snapRut.docs.forEach(doc => { mapa[doc.id] = doc.data(); });
+      setRutinasMap(mapa);
+    } catch (error) { console.error("Error cargando datos:", error); }
   };
 
-  useEffect(() => {
-    if (rutinaSeleccionada && rutinaSeleccionada.ejercicios && rutinaSeleccionada.ejercicios.length > 0) {
-      const ejercicio = rutinaSeleccionada.ejercicios[indiceEjercicio];
-      if (ejercicio) {
-        const info = parsearSeriesReps(ejercicio.seriesReps);
-        setDatosEjercicioActual({
-          nombre: ejercicio.nombre,
-          metaSeries: info.series,
-          metaReps: info.reps,
-          idOriginal: ejercicio.idOriginal
-        });
+  const handleSelectPrograma = (id) => {
+    const prog = programas.find(p => p.id === id);
+    setProgramaSeleccionado(prog || null);
+    setListaDias(prog ? Object.keys(prog.dias) : []);
+    setDiaSeleccionado(null);
+    resetUIParcial();
+  };
+  
+  const handleSelectDia = (nombreDia) => {
+    setDiaSeleccionado(nombreDia);
+    if (programaSeleccionado && nombreDia) {
+      const rutinaIds = programaSeleccionado.dias[nombreDia];
+      let ejerciciosCombinados = [];
+      for (const id of rutinaIds) {
+        const rutina = rutinasMap[id];
+        if (rutina && rutina.ejercicios) {
+          ejerciciosCombinados = [...ejerciciosCombinados, ...rutina.ejercicios];
+        }
       }
+      setEjerciciosDelDia(ejerciciosCombinados);
+    } else {
+      setEjerciciosDelDia([]);
     }
-  }, [indiceEjercicio, rutinaSeleccionada]);
+    resetUIParcial();
+  };
+  
+  useEffect(() => {
+    if (entrenamientoActivo && ejerciciosDelDia.length > 0 && indiceEjercicio < ejerciciosDelDia.length) {
+      const ejercicio = ejerciciosDelDia[indiceEjercicio];
+      const info = parsearSeriesReps(ejercicio.seriesReps);
+      setDatosEjercicioActual({
+        nombre: ejercicio.nombre,
+        metaSeries: info.series,
+        metaReps: info.reps,
+      });
+    }
+  }, [indiceEjercicio, ejerciciosDelDia, entrenamientoActivo]);
 
   useEffect(() => {
     let interval = null;
-    if (entrenamientoActivo) interval = setInterval(() => setTiempoEntrenamiento(t => t + 1), 1000);
+    if (entrenamientoActivo) {
+      interval = setInterval(() => setTiempoEntrenamiento(t => t + 1), 1000);
+    }
     return () => clearInterval(interval);
   }, [entrenamientoActivo]);
 
   useEffect(() => {
     let interval = null;
     if (descansoActivo) {
-      setDescansoTerminado(false);
-      interval = setInterval(() => {
-        setTiempoDescanso(t => {
-          if (t <= 1) {
-            clearInterval(interval);
-            setDescansoActivo(false);
-            setDescansoTerminado(true);
-            return 0;
-          }
-          return t - 1;
-        });
-      }, 1000);
+        setDescansoTerminado(false);
+        interval = setInterval(() => {
+            setTiempoDescanso(t => {
+            if (t <= 1) {
+                clearInterval(interval);
+                setDescansoActivo(false);
+                setDescansoTerminado(true);
+                return 0;
+            }
+            return t - 1;
+            });
+        }, 1000);
     }
     return () => clearInterval(interval);
   }, [descansoActivo]);
-
-  
   const registrarSerieYDescansar = (segundosDescanso) => {
+    if (!datosEjercicioActual) return;
     setDescansoConfigurado(segundosDescanso);
     setTiempoDescanso(segundosDescanso);
     setDescansoActivo(true);
-    setDescansoTerminado(false);
-
     setTotalSeriesCompletadas(prev => prev + 1);
 
-    if (rutinaSeleccionada && datosEjercicioActual) {
-      if (seriesActuales < datosEjercicioActual.metaSeries) {
-        setSeriesActuales(prev => prev + 1);
+    if (seriesActuales < datosEjercicioActual.metaSeries) {
+      setSeriesActuales(prev => prev + 1);
+    } else {
+      if (indiceEjercicio < ejerciciosDelDia.length - 1) {
+        setTimeout(() => {
+          setIndiceEjercicio(prev => prev + 1);
+          setSeriesActuales(1);
+          Alert.alert("¡Ejercicio Completado!", "Prepárate para el siguiente.");
+        }, 500);
       } else {
-        if (indiceEjercicio < rutinaSeleccionada.ejercicios.length - 1) {
-          setTimeout(() => {
-            setIndiceEjercicio(prev => prev + 1);
-            setSeriesActuales(1); 
-            Alert.alert("¡Ejercicio Completado!", "Prepárate para el siguiente.");
-          }, 500); 
-        } else {
-          setModalFinRutinaVisible(true);
-        }
+        Alert.alert("¡Programa Finalizado!", "Has completado todos los ejercicios.", [
+          { text: "Finalizar y Guardar", onPress: () => finalizarEntrenamiento() }
+        ]);
       }
     }
   };
-
   const saltarEjercicio = () => {
-    if (rutinaSeleccionada && indiceEjercicio < rutinaSeleccionada.ejercicios.length - 1) {
+    if (ejerciciosDelDia.length > 0 && indiceEjercicio < ejerciciosDelDia.length - 1) {
       setIndiceEjercicio(prev => prev + 1);
       setSeriesActuales(1);
     } else {
       Alert.alert("Aviso", "Este es el último ejercicio.");
     }
   };
-
+  
   const finalizarEntrenamiento = async () => {
     setEntrenamientoActivo(false);
     setDescansoActivo(false);
 
     if (!userId || tiempoEntrenamiento < 10) {
-        resetUI();
+        resetUICompleto(); 
         return;
     }
 
@@ -162,128 +193,180 @@ const Timer = () => {
         duracionSegundos: tiempoEntrenamiento,
         duracionFormato: formatTiempo(tiempoEntrenamiento),
         seriesTotales: totalSeriesCompletadas,
-        rutinaUsada: rutinaSeleccionada ? rutinaSeleccionada.nombre : "Libre",
-        rutinaId: rutinaSeleccionada ? rutinaSeleccionada.id : null
+        rutinaUsada: programaSeleccionado ? `${programaSeleccionado.nombre} - ${diaSeleccionado}` : "Libre",
+        programaId: programaSeleccionado ? programaSeleccionado.id : null
       });
       Alert.alert("¡Excelente!", "Entrenamiento registrado en tu historial.");
-      resetUI();
     } catch (error) {
-      console.error("Error guardando:", error);
-      Alert.alert("Error", "No se pudo guardar el historial");
+        console.error("Error guardando historial:", error);
+        Alert.alert("Error", "No se pudo guardar el historial.");
+    } finally {
+        resetUICompleto();
     }
   };
 
-  const resetUI = () => {
-    setTiempoEntrenamiento(0);
+  const resetUIParcial = () => {
     setIndiceEjercicio(0);
     setSeriesActuales(1);
-    setTotalSeriesCompletadas(0);
-    setRutinaSeleccionada(null); 
+    setDatosEjercicioActual(null);
   };
+
+  const resetUICompleto = () => {
+    setEntrenamientoActivo(false);
+    setTiempoEntrenamiento(0);
+    setTotalSeriesCompletadas(0);
+    setProgramaSeleccionado(undefined); 
+    setDiaSeleccionado(undefined); 
+    setListaDias([]);
+    setEjerciciosDelDia([]);
+    resetUIParcial();
+  };
+
+  const handleIniciarDescanso = () => {
+    if (entrenamientoActivo) {
+      registrarSerieYDescansar(descansoConfigurado);
+    } else {
+      setTiempoDescanso(descansoConfigurado);
+      setDescansoActivo(true);
+    }
+  };
+  const handleReiniciarDescanso = () => {
+    setDescansoActivo(false);
+    setTiempoDescanso(0);
+    setDescansoTerminado(false);
+  };
+  const handleTimerRapido = (seg) => {
+    setDescansoConfigurado(seg);
+    if(entrenamientoActivo) {
+      registrarSerieYDescansar(seg);
+    } else {
+      setTiempoDescanso(seg);
+      setDescansoActivo(true);
+    }
+  };
+
+  
+  const renderSetup = () => (
+    <View style={styles.setupContainer}>
+      <Text style={styles.headerTitle}>¡Listo para Entrenar!</Text>
+      
+      <SelectorPrograma
+        programas={programas}
+        programaId={programaSeleccionado ? programaSeleccionado.id : undefined}
+        onSelect={handleSelectPrograma}
+      />
+      
+      {programaSeleccionado && (
+        <SelectorDia 
+          dias={listaDias}
+          diaSeleccionado={diaSeleccionado || undefined}
+          onSelect={handleSelectDia}
+        />
+      )}
+      
+      <TouchableOpacity 
+        style={[styles.btnIniciar, (!programaSeleccionado || !diaSeleccionado) && styles.btnDisabled]}
+        disabled={!programaSeleccionado || !diaSeleccionado}
+        onPress={() => {
+          if(ejerciciosDelDia.length === 0) {
+            Alert.alert("Error", "No hay ejercicios en la rutina de este día.");
+            return;
+          }
+          setEntrenamientoActivo(true);
+          setIndiceEjercicio(0); 
+          setSeriesActuales(1);
+        }}
+      >
+        <Text style={styles.btnIniciarText}>INICIAR ENTRENAMIENTO</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderEnCurso = () => (
+    <View>
+      {datosEjercicioActual && (
+        <PanelSeguimiento 
+          ejercicioNombre={datosEjercicioActual.nombre}
+          serieActual={seriesActuales}
+          metaSeries={datosEjercicioActual.metaSeries}
+        />
+      )}
+      
+      <TimerDescanso 
+        tiempoFormateado={formatTiempo(tiempoDescanso)}
+        isActivo={descansoActivo}
+        terminado={descansoTerminado}
+        onIniciar={handleIniciarDescanso}
+        onReiniciar={handleReiniciarDescanso}
+      />
+
+      <TimersRapidos onStartRapido={handleTimerRapido} />
+
+      <TouchableOpacity 
+        style={styles.btnFinalizar} 
+        onPress={() => {
+          Alert.alert(
+            "Finalizar Entrenamiento", 
+            "¿Seguro que quieres terminar el entrenamiento?", 
+            [
+              { text: "Cancelar", style: "cancel" },
+              { text: "Finalizar", style: "destructive", onPress: finalizarEntrenamiento } 
+            ]
+          );
+        }}
+      >
+        <Text style={styles.btnFinalizarText}>Finalizar Entrenamiento</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.headerTitle}>Timer de Entrenamiento</Text>
-        
-        {}
-        <CronometroEntrenamiento
-          tiempo={formatTiempo(tiempoEntrenamiento)}
-          isActivo={entrenamientoActivo}
-          onIniciar={() => {
-             if(!rutinaSeleccionada) {
-                Alert.alert("Atención", "Selecciona una rutina primero para iniciar el modo guiado.");
-                return;
-             }
-             setEntrenamientoActivo(true);
-          }}
-          onDetener={() => setModalConfirmacionVisible(true)}
-        />
-
-        {}
-        {!entrenamientoActivo ? (
-            <SelectorRutina 
-              rutinas={rutinas}
-              rutinaId={rutinaSeleccionada ? rutinaSeleccionada.id : null}
-              onSelect={(id) => {
-                  const r = rutinas.find(item => item.id === id);
-                  setRutinaSeleccionada(r || null);
-                  setIndiceEjercicio(0);
-                  setSeriesActuales(1);
-              }}
-            />
-        ) : (
-            datosEjercicioActual && (
-                <PanelSeguimiento 
-                    ejercicioNombre={datosEjercicioActual.nombre}
-                    progresoEjercicios={`Ejercicio ${indiceEjercicio + 1} de ${rutinaSeleccionada.ejercicios.length}`}
-                    progresoSeries={`Serie ${seriesActuales}`}
-                    metaSeries={datosEjercicioActual.metaSeries}
-                    metaReps={datosEjercicioActual.metaReps}
-                    onSiguienteEjercicio={saltarEjercicio}
-                />
-            )
-        )}
-
-        <View style={styles.divider} />
-
-        {}
-        <TimerDescanso 
-          tiempo={formatTiempo(tiempoDescanso)}
-          configurado={descansoConfigurado}
-          isActivo={descansoActivo}
-          terminado={descansoTerminado}
-          onAjustar={(val) => setDescansoConfigurado(p => Math.max(15, p + val))}
-          onIniciar={() => {
-              if(entrenamientoActivo) {
-                  registrarSerieYDescansar(descansoConfigurado);
-              } else {
-                  setTiempoDescanso(descansoConfigurado);
-                  setDescansoActivo(true);
-              }
-          }}
-          onReiniciar={() => {
-            setDescansoActivo(false);
-            setTiempoDescanso(0);
-          }}
-        />
-
-        {}
-        <ConfirmacionModal
-          isVisible={modalConfirmacionVisible}
-          onClose={() => setModalConfirmacionVisible(false)}
-          onConfirm={() => {
-            setModalConfirmacionVisible(false);
-            finalizarEntrenamiento();
-          }}
-          title="Finalizar Entrenamiento"
-          message="¿Deseas terminar y guardar la sesión actual en tu historial?"
-          confirmText="Finalizar"
-          isDestructive={true}
-        />
-
-        {}
-        <ConfirmacionModal
-          isVisible={modalFinRutinaVisible}
-          onClose={() => setModalFinRutinaVisible(false)}
-          onConfirm={() => {
-            setModalFinRutinaVisible(false);
-            finalizarEntrenamiento();
-          }}
-          title="¡Rutina Completada!"
-          message="¡Felicidades! Has completado todos los ejercicios. ¿Guardamos la sesión?"
-          confirmText="Guardar Sesión"
-        />
+        {entrenamientoActivo ? renderEnCurso() : renderSetup()}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   scroll: { padding: 20, paddingBottom: 60 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-  divider: { height: 1, backgroundColor: '#DDD', marginVertical: 25 }
+  setupContainer: {
+  },
+  headerTitle: { 
+    fontSize: 26, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: 20 
+  },
+  btnIniciar: {
+    backgroundColor: '#28A745',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  btnIniciarText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  btnDisabled: {
+    backgroundColor: '#A9A9A9',
+  },
+  btnFinalizar: {
+    backgroundColor: '#DC3545',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 30,
+  },
+  btnFinalizarText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+  }
 });
 
 export default Timer;

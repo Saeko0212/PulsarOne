@@ -4,6 +4,7 @@ import {
   Text, TouchableOpacity, Alert 
 } from 'react-native';
 import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../database/firebaseconfig';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -15,6 +16,7 @@ const Nutricion = () => {
   const [modalComidaVisible, setModalComidaVisible] = useState(false);
   const [modalMetasVisible, setModalMetasVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState(auth.currentUser);
 
   const [metas, setMetas] = useState({
     calorias: 2000, proteina: 150, carbos: 200, grasas: 65
@@ -30,8 +32,22 @@ const Nutricion = () => {
   const [listaComidas, setListaComidas] = useState([]); 
 
   useEffect(() => {
-    cargarDatos();
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      cargarDatos();
+    } else {
+      // Limpiar datos si no hay usuario
+      setMetas({ calorias: 2000, proteina: 150, carbos: 200, grasas: 65 });
+      setConsumido({ calorias: 0, proteina: 0, carbos: 0, grasas: 0 });
+      setListaComidas([]);
+    }
+  }, [user]);
 
   const cargarDatos = async () => {
     setRefreshing(true);
@@ -40,7 +56,7 @@ const Nutricion = () => {
   };
 
   const cargarMetas = async () => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     try {
       const docRef = doc(db, "metasNutricionales", auth.currentUser.uid);
       const docSnap = await getDoc(docRef);
@@ -62,12 +78,12 @@ const Nutricion = () => {
   };
 
   const cargarComidasHoy = async () => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     try {
       const hoy = new Date();
       const q = query(
         collection(db, "Nutricion"), 
-        where("userId", "==", auth.currentUser.uid)
+        where("userId", "==", user.uid)
       );
 
       const querySnapshot = await getDocs(q);

@@ -1,15 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native'; 
 import { LinearGradient } from 'expo-linear-gradient'; 
-import { db } from '../database/firebaseconfig.js';
+import { db, auth } from '../database/firebaseconfig.js';
 import { collection, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const MotivationCard = ({ weeklyWorkouts, weeklyGoal }) => { 
   const [quote, setQuote] = useState('El éxito no es final, el fracaso no es fatal: es el coraje para continuar lo que cuenta.');
+  const [user, setUser] = useState(auth.currentUser);
   const totalDays = weeklyGoal || 6;
   const progressPercentage = totalDays > 0 ? (weeklyWorkouts / totalDays) * 100 : 0;
   
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setQuote('Inicia sesión para ver tu frase del día.');
+      return;
+    }
     const fetchQuote = async () => {
       try {
         const colRef = collection(db, 'Motivaciondia');
@@ -29,7 +42,7 @@ const MotivationCard = ({ weeklyWorkouts, weeklyGoal }) => {
     };
     
     fetchQuote();
-  }, []);
+  }, [user]);
 
   return (
     <LinearGradient

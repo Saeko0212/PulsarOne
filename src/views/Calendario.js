@@ -12,6 +12,7 @@ import CalendarioSemana from '../components/CalendarioSemana';
 import CalendarioDia from '../components/CalendarioDia';
 
 import { db, auth } from '../database/firebaseconfig.js';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 LocaleConfig.locales['es'] = {
@@ -45,9 +46,15 @@ const Calendario = () => {
   const [visibleMonth, setVisibleMonth] = useState(new Date());
   const [monthDots, setMonthDots] = useState({});
   const [loadingDots, setLoadingDots] = useState(true);
-  
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
 
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+  
   useEffect(() => {
     if (!user) {
       setMonthDots({});

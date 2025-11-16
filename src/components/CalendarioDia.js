@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { db, auth } from '../database/firebaseconfig.js';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 
 import FormularioEventos from './FormularioEventos';
@@ -31,8 +32,14 @@ const CalendarioDia = ({ selectedDate }) => {
   const [loadingDaily, setLoadingDaily] = useState(true);
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
   const [eventoAEliminarId, setEventoAEliminarId] = useState(null);
-  
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     setLoadingDaily(true);

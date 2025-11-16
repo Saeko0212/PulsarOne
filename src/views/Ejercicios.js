@@ -230,7 +230,7 @@ const Ejercicios = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5', 
+    backgroundColor: '#F9FAFB', 
     paddingHorizontal: 20,
     paddingTop: 10,
   },
@@ -264,16 +264,16 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#EFEFEF',
+    borderColor: '#E5E7EB',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 3.84,
+    shadowRadius: 2,
     elevation: 2,
   },
   cardHeader: {

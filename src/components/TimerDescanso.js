@@ -2,41 +2,44 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const TimerDescanso = ({ tiempo, configurado, isActivo, terminado, onAjustar, onIniciar, onReiniciar }) => {
+const TimerDescanso = ({ 
+  tiempoFormateado, 
+  isActivo, 
+  terminado, 
+  onIniciar, 
+  onReiniciar 
+}) => {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Timer de Descanso</Text>
-      <Text style={[styles.timerText, isActivo && styles.timerActivo, terminado && styles.timerTerminado]}>
-        {tiempo}
-      </Text>
+      <Text style={styles.title}>Temporizador de Descanso</Text>
+
+      {}
+      <View style={styles.timerCircle}>
+        <Text style={[styles.timerText, terminado && styles.timerTerminado]}>
+          {tiempoFormateado}
+        </Text>
+      </View>
       
       {terminado && <Text style={styles.terminadoText}>¡Descanso terminado!</Text>}
 
       {}
-      <View style={styles.controles}>
-        <TouchableOpacity style={styles.btnAjuste} onPress={() => onAjustar(-15)}>
-          <Ionicons name="remove" size={24} color="#555" />
+      <View style={styles.buttonRow}>
+        <TouchableOpacity 
+          style={[styles.btn, styles.btnStart]} 
+          onPress={onIniciar}
+          disabled={isActivo} 
+        >
+          <Text style={styles.btnStartText}>Iniciar Descanso</Text>
         </TouchableOpacity>
-        <Text style={styles.tiempoConfigurado}>{configurado}s</Text>
-        <TouchableOpacity style={styles.btnAjuste} onPress={() => onAjustar(15)}>
-          <Ionicons name="add" size={24} color="#555" />
+        
+        <TouchableOpacity 
+          style={[styles.btn, styles.btnReiniciar]} 
+          onPress={onReiniciar}
+        >
+          <Ionicons name="refresh" size={16} color="#555" />
+          <Text style={styles.btnReiniciarText}>Reiniciar</Text>
         </TouchableOpacity>
       </View>
-
-      {}
-      {!isActivo ? (
-        <TouchableOpacity style={[styles.btn, styles.btnStart]} onPress={onIniciar}>
-          <Text style={styles.btnText}>Iniciar Descanso</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={[styles.btn, styles.btnStop]} onPress={onReiniciar}>
-          <Text style={styles.btnText}>Detener</Text>
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity style={[styles.btn, styles.btnReiniciar]} onPress={onReiniciar}>
-        <Ionicons name="refresh" size={16} color="#555" />
-        <Text style={styles.btnTextReiniciar}>Reiniciar Descanso</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -51,54 +54,46 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 2,
+    marginTop: 20,
   },
   title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 14,
+    color: '#888',
+    fontWeight: '500',
+    marginBottom: 15,
+  },
+  timerCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+    borderWidth: 8,
+    borderColor: '#28A745',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   timerText: {
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#AAA',
-    marginVertical: 5,
-  },
-  timerActivo: {
     color: '#28A745',
   },
   timerTerminado: {
-    color: '#E74C3C',
+    color: '#E74C3C', 
   },
   terminadoText: {
     color: '#28A745',
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 15,
   },
-  controles: {
+  buttonRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 15,
-  },
-  btnAjuste: {
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tiempoConfigurado: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginHorizontal: 30,
-    width: 60,
-    textAlign: 'center',
+    width: '100%',
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
   btn: {
-    width: '100%',
-    padding: 15,
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
     flexDirection: 'row',
@@ -106,26 +101,22 @@ const styles = StyleSheet.create({
   },
   btnStart: {
     backgroundColor: '#28A745',
-    marginBottom: 10,
+    flex: 0.6, 
   },
-  btnStop: {
-    backgroundColor: '#E74C3C',
-    marginBottom: 10,
-  },
-  btnText: {
+  btnStartText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 16,
   },
   btnReiniciar: {
     backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#DDD',
+    flex: 0.35, 
   },
   btnTextReiniciar: {
     color: '#555',
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: 5,
   }
 });
 

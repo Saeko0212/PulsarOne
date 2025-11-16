@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 
 const HomeHeader = ({ userData }) => {
   const getFirstName = (fullName) => {
-    if (!fullName) return 'Usuario';
+    if (!fullName) return null;
     return fullName.split(' ')[0]; 
   };
 
@@ -11,9 +11,11 @@ const HomeHeader = ({ userData }) => {
     <View style={styles.headerContainer}>
       <View style={styles.textContainer}>
         {}
-        <Text style={styles.welcomeText}>
-          ¡Bienvenido de vuelta, {getFirstName(userData?.nombre)}!
-        </Text>
+        {userData?.nombre ? (
+          <Text style={styles.welcomeText}>¡Bienvenido de vuelta, {getFirstName(userData.nombre)}!</Text>
+        ) : (
+          <Text style={styles.welcomeText}>¡Bienvenido de vuelta!</Text>
+        )}
         
         {}
         <Text style={styles.subtitleText}>
@@ -29,7 +31,7 @@ const HomeHeader = ({ userData }) => {
       ) : (
         <View style={[styles.profileImage, styles.avatarPlaceholder]}>
           <Text style={styles.avatarText}>
-            {getFirstName(userData?.nombre).charAt(0)}
+            {userData?.nombre ? getFirstName(userData.nombre).charAt(0) : 'I'}
           </Text>
         </View>
       )}

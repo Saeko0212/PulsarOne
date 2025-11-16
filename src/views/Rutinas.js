@@ -180,19 +180,19 @@ const Rutinas = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF', paddingHorizontal: 20, paddingTop: 10 }, // Fondo blanco como el diseño
+  container: { flex: 1, backgroundColor: '#F9FAFB', paddingHorizontal: 20, paddingTop: 10 },
   
   mainHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 25, marginTop: 10 },
-  mainTitle: { fontSize: 22, fontWeight: '800', color: '#002', lineHeight: 28 },
+  mainTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', lineHeight: 28 },
   mainSubtitle: { fontSize: 12, color: '#666', marginTop: 5, width: '90%' },
   btnNew: { flexDirection: 'row', backgroundColor: '#28A745', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', marginTop: 5 },
   btnNewText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
 
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

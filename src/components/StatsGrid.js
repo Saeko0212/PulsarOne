@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { auth, db } from '../database/firebaseconfig';
 import { collection, query, where, onSnapshot, doc, orderBy, limit } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { FontAwesome5 } from '@expo/vector-icons';
 import MetaEditorModal from './MetaEditorModal';
 
 const StatsGrid = ({ onWeeklyDaysUpdate, onWeeklyGoalUpdate }) => { 
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
   const [realDias, setRealDias] = useState(0);
   const [realCalorias, setRealCalorias] = useState(0);
   const [realMinutos, setRealMinutos] = useState(0);
@@ -19,6 +20,13 @@ const StatsGrid = ({ onWeeklyDaysUpdate, onWeeklyGoalUpdate }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTipo, setModalTipo] = useState('dias');
   const [modalValorActual, setModalValorActual] = useState(0);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -38,7 +46,10 @@ const StatsGrid = ({ onWeeklyDaysUpdate, onWeeklyGoalUpdate }) => {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLatestWeight(70); // Reset to default
+      return;
+    }
     const qPeso = query(collection(db, 'PerfilDatos', user.uid, 'mediciones'), orderBy('fecha', 'desc'), limit(1));
     const unsubPeso = onSnapshot(qPeso, (s) => {
       if (!s.empty) setLatestWeight(s.docs[0].data().peso);
@@ -47,7 +58,15 @@ const StatsGrid = ({ onWeeklyDaysUpdate, onWeeklyGoalUpdate }) => {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setRealDias(0);
+      setRealMinutos(0);
+      setRealCalorias(0);
+      if (onWeeklyDaysUpdate) {
+        onWeeklyDaysUpdate(0);
+      }
+      return;
+    }
 
     const now = new Date();
     const todayStart = new Date(now.setHours(0,0,0,0));

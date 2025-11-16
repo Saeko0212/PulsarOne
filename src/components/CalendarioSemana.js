@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { db, auth } from '../database/firebaseconfig.js'; // Asegúrate de que la ruta sea correcta
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const TIPO_COLORES = {
   'Entrenamiento': '#007bff', 'Cardio': '#28a745', 'Yoga': '#6f42c1',
@@ -19,7 +20,14 @@ const formatWeeklyDate = (date) => {
 const CalendarioSemana = () => {
   const [weeklyEvents, setWeeklyEvents] = useState([]);
   const [loadingWeeklyList, setLoadingWeeklyList] = useState(true);
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     if (!user) {

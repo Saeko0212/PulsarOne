@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { auth, db } from '../database/firebaseconfig.js';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const formatRelativeDate = (timestamp) => {
   const date = timestamp.toDate();
@@ -16,10 +17,17 @@ const formatRelativeDate = (timestamp) => {
 
 const RecentWorkouts = () => {
   const [recent, setRecent] = useState([]);
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
 
   useEffect(() => {
-    if (!user) return;
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) { setRecent([]); return; }
     const historyRef = collection(db, 'HistorialEntrenamientos');
     
     const q = query(

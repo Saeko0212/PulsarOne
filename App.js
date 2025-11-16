@@ -15,6 +15,7 @@ import Sueño from './src/views/Sueño.js';
 import Timer from './src/views/Timer.js';
 import Ejercicios from './src/views/Ejercicios.js';
 import Ranking from './src/views/Ranking.js';
+import Programas from './src/views/Programas.js';
 
 const Stack = createStackNavigator();
 
@@ -60,6 +61,7 @@ export default function App() {
             <Stack.Screen name="Timer" component={Timer} />
             <Stack.Screen name="Ejercicios" component={Ejercicios} />
             <Stack.Screen name="Ranking" component={Ranking} />
+            <Stack.Screen name="Programas" component={Programas} />
             
           </Stack.Navigator>
         </NavigationContainer>

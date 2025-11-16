@@ -21,7 +21,11 @@ const LoginScreen = ({ onSuccessfulLogin, onCancel }) => {
       }
     } catch (error) {
       console.error("Error en el inicio de sesión: ", error);
-      Alert.alert('Error', 'Email o contraseña incorrectos.');
+      if (error.code === 'auth/invalid-credential') {
+        Alert.alert('Error', 'El correo o la contraseña son incorrectos.');
+      } else {
+        Alert.alert('Error', 'Ocurrió un problema al intentar iniciar sesión.');
+      }
     }
   };
 

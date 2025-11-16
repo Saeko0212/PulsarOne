@@ -155,6 +155,7 @@ const DrawerDer = ({ visible, onClose, navigation }) => {
         {}
         <ScrollView style={styles.menuItems}>
           <MenuItem icon="list-alt" label="Rutinas" onPress={() => handleNavigate('Rutinas')} />
+          <MenuItem icon="view-week-outline" label="Programas" onPress={() => handleNavigate('Programas')} iconLib="MaterialCommunityIcons" />
           <MenuItem icon="bullseye" label="Objetivos" onPress={() => handleNavigate('Objetivos')} />
           <MenuItem icon="apple" label="Nutrición" onPress={() => handleNavigate('Nutricion')} />
           <MenuItem icon="moon-o" label="Sueño" onPress={() => handleNavigate('Sueño')} />

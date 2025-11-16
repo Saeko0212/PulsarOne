@@ -10,6 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { auth, db } from '../database/firebaseconfig';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, onSnapshot, orderBy, limit, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
 import FormularioObjetivos from '../components/FormularioObjetivos';
@@ -66,12 +67,23 @@ const Objetivos = () => {
   const [trainingDaysCount, setTrainingDaysCount] = useState(0);
 
   const [promedioGeneral, setPromedioGeneral] = useState(0);
+  const [user, setUser] = useState(auth.currentUser);
 
-  const user = auth.currentUser;
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     if (!user) {
-      setLoading(false); return; }
+      setLoading(false);
+      setActivos([]);
+      setCompletados([]);
+      setLatestWeight(null);
+      setTrainingDaysCount(0);
+      return; }
     const objRef = collection(db, "Objetivos");
     const q = query(objRef, where("userId", "==", user.uid), orderBy("fechaLimite", "asc"));
     
@@ -246,7 +258,7 @@ const Objetivos = () => {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f8f9fa' },
+  screen: { flex: 1, backgroundColor: '#F9FAFB' },
   listContainer: { paddingHorizontal: 15, paddingBottom: 30 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15 },
   mainTitle: { 
