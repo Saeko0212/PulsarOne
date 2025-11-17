@@ -1,4 +1,3 @@
-// components/FormularioMedicion.js
 import React, { useState } from 'react';
 import {
   Modal,
@@ -9,19 +8,23 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  Platform,
+  Platform, Button
 } from 'react-native';
 import { auth, db } from '../database/firebaseconfig.js';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { FontAwesome } from '@expo/vector-icons';
+import CalculadoraGrasaModal from './CalculadoraGrasaModal'; 
 
-const FormularioMedicion = ({ visible, onClose }) => {
+const FormularioMedicion = ({ visible, onClose, userData }) => {
   const [fecha, setFecha] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [peso, setPeso] = useState('');
-  const [grasa, setGrasa] = useState('');
+  const [grasa, setGrasa] = useState(''); 
   const [masaMuscular, setMasaMuscular] = useState('');
   const [notas, setNotas] = useState('');
+  
+  const [calculadoraVisible, setCalculadoraVisible] = useState(false);
 
   const handleAgregarMedicion = async () => {
     if (!peso) {
@@ -36,10 +39,8 @@ const FormularioMedicion = ({ visible, onClose }) => {
         return;
       }
 
-      // Referencia a la subcolección 'mediciones'
       const medicionesRef = collection(db, 'PerfilDatos', user.uid, 'mediciones');
 
-      // Añade el nuevo documento
       await addDoc(medicionesRef, {
         fecha: Timestamp.fromDate(fecha),
         peso: parseFloat(peso),
@@ -50,9 +51,7 @@ const FormularioMedicion = ({ visible, onClose }) => {
       });
 
       Alert.alert('¡Éxito!', 'Medición agregada correctamente.');
-      onClose(); // Cierra el modal
-      // Resetea el formulario
-      setPeso('');
+      onClose();
       setGrasa('');
       setMasaMuscular('');
       setNotas('');
@@ -69,87 +68,121 @@ const FormularioMedicion = ({ visible, onClose }) => {
     setFecha(currentDate);
   };
 
+  const handleGrasaCalculada = (resultadoGrasa) => {
+    if (!peso || isNaN(peso) || Number(peso) <= 0) {
+      Alert.alert(
+        "Falta el Peso",
+        "Ingresa tu peso actual para poder calcular la masa muscular.",
+        [{ text: "OK" }]
+      );
+      setGrasa(resultadoGrasa.toFixed(1));
+      return;
+    }
+
+    const pesoActualNum = Number(peso);
+    const grasaPorcentajeNum = Number(resultadoGrasa);
+
+    const masaGrasaKg = pesoActualNum * (grasaPorcentajeNum / 100);
+
+    const masaMuscularKg = pesoActualNum - masaGrasaKg;
+
+    setGrasa(grasaPorcentajeNum.toFixed(1));
+    setMasaMuscular(masaMuscularKg.toFixed(1)); 
+  };
+
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <ScrollView contentContainerStyle={styles.modalView}>
-          <Text style={styles.title}>Nueva Medición</Text>
+    <>
+      <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalView}>
+            <Text style={styles.title}>Nueva Medición</Text>
 
-          <Text style={styles.label}>Fecha</Text>
-          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInput}>
-            <Text>{fecha.toLocaleDateString('es-ES')}</Text>
-          </TouchableOpacity>
-          
-          {showDatePicker && (
-            <DateTimePicker
-              testID="dateTimePicker"
-              value={fecha}
-              mode="date"
-              display="default"
-              onChange={onChangeDate}
+            <Text style={styles.label}>Fecha</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInput}>
+              <Text>{fecha.toLocaleDateString('es-ES')}</Text>
+            </TouchableOpacity>
+            
+            {showDatePicker && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={fecha}
+                mode="date"
+                display="default"
+                onChange={onChangeDate}
+              />
+            )}
+
+            <Text style={styles.label}>Peso (kg)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="75"
+              value={peso}
+              onChangeText={setPeso}
+              keyboardType="numeric"
             />
-          )}
-
-          <Text style={styles.label}>Peso (kg)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="75"
-            value={peso}
-            onChangeText={setPeso}
-            keyboardType="numeric"
-          />
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>% Grasa (opcional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="18"
-                value={grasa}
-                onChangeText={setGrasa}
-                keyboardType="numeric"
-              />
+            
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <Text style={styles.label}>% Grasa (opcional)</Text>
+                <TextInput style={styles.input} placeholder="18" value={grasa} onChangeText={setGrasa} keyboardType="numeric" />
+              </View>
+              <View style={styles.column}>
+                <Text style={styles.label}>Masa Muscular (kg)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="35"
+                  value={masaMuscular}
+                  onChangeText={setMasaMuscular}
+                  keyboardType="numeric"
+                />
+              </View>
             </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Masa Muscular (kg)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="35"
-                value={masaMuscular}
-                onChangeText={setMasaMuscular}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
 
-          <Text style={styles.label}>Notas (opcional)</Text>
-          <TextInput
-            style={[styles.input, styles.inputNotas]}
-            placeholder="Añade notas sobre esta medición..."
-            value={notas}
-            onChangeText={setNotas}
-            multiline
-          />
+            <TouchableOpacity 
+              style={styles.buttonCalc}
+              onPress={() => {
+                if (!userData || !userData.genero || !userData.altura) {
+                  Alert.alert("Faltan datos", "Por favor, completa tu 'Género' y 'Altura' en tu Perfil primero.");
+                } else {
+                  setCalculadoraVisible(true);
+                }
+              }}
+            >
+              <Text style={styles.buttonCalcText}>Calcular % Grasa (US Navy)</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.buttonGreen} onPress={handleAgregarMedicion}>
-            <Text style={styles.buttonTextWhite}>Agregar</Text>
-          </TouchableOpacity>
+            <Text style={styles.label}>Notas (opcional)</Text>
+            <TextInput
+              style={[styles.input, styles.inputNotas]}
+              placeholder="Añade notas..."
+              value={notas}
+              onChangeText={setNotas}
+              multiline
+            />
 
-          <TouchableOpacity style={styles.buttonWhite} onPress={onClose}>
-            <Text style={styles.buttonTextBlack}>Cancelar</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    </Modal>
+            <TouchableOpacity style={styles.buttonGreen} onPress={handleAgregarMedicion}>
+              <Text style={styles.buttonTextWhite}>Agregar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.buttonWhite} onPress={onClose}>
+              <Text style={styles.buttonTextBlack}>Cancelar</Text>
+            </TouchableOpacity>
+            
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {}
+      <CalculadoraGrasaModal
+        visible={calculadoraVisible}
+        onClose={() => setCalculadoraVisible(false)}
+        userData={userData}
+        onCalculated={handleGrasaCalculada}
+      />
+    </>
   );
 };
 
-// Estilos (similares a EditarPerfilModal)
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
@@ -197,7 +230,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  column: { flex: 1, marginHorizontal: -5 }, // Ajuste para que los inputs se alineen
+  column: { flex: 1, paddingHorizontal: 5 },
   buttonGreen: {
     backgroundColor: '#28a745',
     padding: 15,
@@ -221,6 +254,17 @@ const styles = StyleSheet.create({
   buttonTextBlack: {
     color: '#333',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  buttonCalc: {
+    backgroundColor: '#007bff', 
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 15, 
+  },
+  buttonCalcText: {
+    color: '#fff',
     fontWeight: 'bold',
   },
 });

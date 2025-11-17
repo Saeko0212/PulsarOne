@@ -421,7 +421,11 @@ const LoggedInView = () => {
       </View>
 
       <EditarPerfilModal visible={editModalVisible} onClose={() => setEditModalVisible(false)} currentUserData={userData} />
-      <FormularioMedicion visible={medicionModalVisible} onClose={() => setMedicionModalVisible(false)} />
+      <FormularioMedicion 
+        visible={medicionModalVisible} 
+        onClose={() => setMedicionModalVisible(false)} 
+        userData={userData} 
+      />
       <EditarMedicionModal visible={editMedicionModalVisible} onClose={() => { setEditMedicionModalVisible(false); setMedicionToEdit(null); }} medicionToEdit={medicionToEdit} />
 
       <EliminarMedicionModal

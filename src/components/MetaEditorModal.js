@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { auth, db } from '../database/firebaseconfig';
+import { auth, db } from '../database/firebaseconfig.js';
 import { doc, setDoc } from 'firebase/firestore';
-
+ 
 const MetaEditorModal = ({ visible, onClose, tipo, valorActual, onSave }) => {
   const [valor, setValor] = useState('');
 
@@ -14,7 +14,7 @@ const MetaEditorModal = ({ visible, onClose, tipo, valorActual, onSave }) => {
 
   const handleSave = async () => {
     if (!valor || isNaN(valor) || Number(valor) <= 0) {
-      Alert.alert("Error", "Por favor ingresa un número válido mayor a 0.");
+      Alert.alert("Error", "Ingresa un número válido mayor a 0.");
       return;
     }
 
@@ -23,17 +23,22 @@ const MetaEditorModal = ({ visible, onClose, tipo, valorActual, onSave }) => {
 
     try {
       const numValor = Number(valor);
-      
-      const metaRef = doc(db, 'MetasDiarias', user.uid);
+      const metaRef = doc(db, 'MetasDiarias', user.uid); 
       
       const dataToUpdate = {};
+      
       if (tipo === 'dias') dataToUpdate.metaDiasSemana = numValor;
       if (tipo === 'calorias') dataToUpdate.metaCalorias = numValor;
       if (tipo === 'tiempo') dataToUpdate.metaMinutos = numValor;
+      
+      if (tipo === 'grasa') dataToUpdate.metaGrasa = numValor;
+      if (tipo === 'musculo') dataToUpdate.metaMasaMuscular = numValor;
+      
+      if (tipo === 'entrenamientosMes') dataToUpdate.metaEntrenamientosMes = numValor;
 
       await setDoc(metaRef, dataToUpdate, { merge: true });
       
-      onSave(); 
+      onSave();
       onClose();
     } catch (error) {
       console.error("Error guardando meta:", error);
@@ -45,6 +50,9 @@ const MetaEditorModal = ({ visible, onClose, tipo, valorActual, onSave }) => {
     if (tipo === 'dias') return "Meta de Días Semanales";
     if (tipo === 'calorias') return "Meta de Calorías Diarias";
     if (tipo === 'tiempo') return "Meta de Tiempo Diario (min)";
+    if (tipo === 'grasa') return "Meta de Grasa Corporal (%)";
+    if (tipo === 'musculo') return "Meta de Masa Muscular (kg)";
+    if (tipo === 'entrenamientosMes') return "Meta de Entrenamientos Mensuales";
     return "Editar Meta";
   };
 
