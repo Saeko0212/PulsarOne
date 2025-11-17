@@ -54,7 +54,15 @@ const LoginFormulario = ({ onSuccessfulRegister }) => {
 
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert('Error', error.message);
+      let friendlyMessage = 'Ocurrió un error durante el registro.';
+      if (error.code === 'auth/email-already-in-use') {
+        friendlyMessage = 'Este correo electrónico ya está en uso.';
+      } else if (error.code === 'auth/invalid-email') {
+        friendlyMessage = 'El formato del correo electrónico no es válido.';
+      } else if (error.code === 'auth/weak-password') {
+        friendlyMessage = 'La contraseña debe tener al menos 6 caracteres.';
+      }
+      Alert.alert('Error de Registro', friendlyMessage);
     }
   };
 
